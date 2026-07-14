@@ -1,0 +1,24 @@
+[
+  {
+    "status": "Certified",
+    "items": [
+      {
+        "title": "AWS Certified Solutions Architect - Associate",
+        "href": "https://www.credly.com/badges/9925c223-e502-4272-a2ab-918babf511e4/public_url",
+        "image": "/assets/certifications/aws-certified-solutions-architect-associate.png"
+      },
+      {
+        "title": "Certified Kubernetes Administrator",
+        "href": "https://www.credly.com/badges/f4784067-93d0-4de1-89c9-b646b03eaf85/public_url",
+        "image": "/assets/certifications/cka-certified-kubernetes-administrator.png"
+      }
+    ]
+  },
+  {
+    "status": "Preparing",
+    "items": [
+      { "title": "Certified Kubernetes Security Specialist" },
+      { "title": "Linux Foundation Certified System Administrator" }
+    ]
+  }
+]

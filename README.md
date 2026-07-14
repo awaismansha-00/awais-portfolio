@@ -18,11 +18,58 @@ A modern DevOps engineer portfolio built with Vite, React, Tailwind CSS, Three.j
 Update these first:
 
 - Your email, GitHub, and LinkedIn are stored in the `profile` object near the top of `src/App.jsx`.
-- Swap the project case studies in `src/App.jsx` with your real project names, outcomes, tools, and metrics.
+- Add, edit, remove, or reorder projects in `src/content/projects.json`.
+- Add, edit, remove, or reorder blog posts in `src/content/blogs.json`.
+- Add, edit, remove, or reorder certifications in `src/content/certifications.json`.
 - Update the skills list in `src/App.jsx` if you want to add or reorder tools.
-- Update `profile.medium` and the `blogPosts` list in `src/App.jsx` when your Medium profile or article URLs are ready.
 - Add your resume PDF to `public/assets/` and link it from the hero or contact section if you want a download button.
 - The profile picture is currently loaded from `public/assets/profile.png`.
+
+## Edit Projects and Blogs
+
+Projects render in the same order as `src/content/projects.json`. Use this shape:
+
+```json
+{
+  "title": "AWS 3-Tier Architecture with Terraform",
+  "summary": "Short website description here.",
+  "github": "https://github.com/awaismansha-00/aws_terraform_3tier",
+  "image": "/assets/projects/3-Tier AWS Architecture.png",
+  "tags": ["AWS", "Terraform", "VPC", "ALB", "RDS"]
+}
+```
+
+The `image` field is optional. Add project images to `public/assets/projects/`.
+
+Blogs render in the same order as `src/content/blogs.json`. Use this shape:
+
+```json
+{
+  "title": "Blog title",
+  "summary": "Short website version here.",
+  "href": "https://medium.com/...",
+  "image": "/assets/blog/example.png"
+}
+```
+
+The `image` field is optional. Add blog images to `public/assets/blog/`.
+
+Certifications render from `src/content/certifications.json`. Completed certifications can link to Credly and use badge images:
+
+```json
+{
+  "status": "Certified",
+  "items": [
+    {
+      "title": "AWS Certified Solutions Architect - Associate",
+      "href": "https://www.credly.com/badges/...",
+      "image": "/assets/certifications/aws-certified-solutions-architect-associate.png"
+    }
+  ]
+}
+```
+
+The `href` and `image` fields are optional. Add certification badge images to `public/assets/certifications/`.
 
 ## Develop
 

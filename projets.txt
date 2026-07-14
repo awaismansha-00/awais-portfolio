@@ -1,0 +1,29 @@
+Project title: AWS 3-Tier Architecture with Terraform
+GitHub link: https://github.com/awaismansha-00/aws_terraform_3tier
+Image filename: 3-Tier AWS Architecture
+Tools: AWS (IAM, VPC, ALB, ASG, SG, RDS, S3, EC2 CloudWatch), Terraform
+Description:
+
+Project title: AWS Architectures
+GitHub link: https://github.com/awaismansha-00/aws-architectures
+Image filename: 
+Tools: AWS (IAM, VPC, ALB, ASG, SG, RDS, CloudWatch, Lambda, DynamoDB, SQS, API Gateway, S3, EC2, EBS, EFS, Secrets Manager), Terraform
+Description:
+
+Project title: AWS-EKS features lab with Terraform
+GitHub link: https://github.com/awaismansha-00/aws-eks-terraform-feature-lab
+Image filename:  
+Tools: AWS, Terraform, EKS (User Access, EBS/EFS CSI, Secrets Store CSI, AWS LBC, Nginx LBC, Ingress, Cert Manager, TLS, Cluster/Pod Autoscaler)
+Description:
+
+Project title: Production Grade DevSecOps Project
+GitHub link: https://github.com/awaismansha-00/production-grade-devsecops
+Image filename: 
+Tools: AWS, Terraform, EKS, ArgoCD, Github Actions, Prometheus, Grafana, EFK Stack, Jaeger
+Description:
+
+Project title: Opentelementry DevOpsification
+GitHub link: https://github.com/awaismansha-00/opentelemetry-demo-devops
+Image filename: 
+Tools: AWS, Terraform, EKS, ArgoCD, Github Actions, Prometheus, Grafana, EFK Stack, Jaeger
+Description:

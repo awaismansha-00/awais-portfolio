@@ -1,0 +1,33 @@
+[
+  {
+    "title": "AWS 3-Tier Architecture with Terraform",
+    "summary": "Terraform-managed 3-tier AWS architecture with reusable modules for networking, load balancing, compute, database, secrets, IAM, remote state, and monitoring.",
+    "github": "https://github.com/awaismansha-00/aws_terraform_3tier",
+    "image": "/assets/projects/3-Tier AWS Architecture.png",
+    "tags": ["AWS", "Terraform", "VPC", "ALB", "ASG", "RDS", "CloudWatch"]
+  },
+  {
+    "title": "AWS Architectures",
+    "summary": "A collection of modular Terraform architecture labs covering serverless APIs, blue-green deployments, real-time backends, event-driven media processing, file storage, and three-tier web patterns.",
+    "github": "https://github.com/awaismansha-00/aws-architectures",
+    "tags": ["AWS", "Terraform", "Lambda", "DynamoDB", "SQS", "API Gateway", "S3"]
+  },
+  {
+    "title": "AWS EKS Terraform Feature Lab",
+    "summary": "EKS lab built with Terraform to explore managed node groups, access entries, Pod Identity, autoscaling, ingress controllers, cert-manager, CSI storage, and Secrets Store CSI.",
+    "github": "https://github.com/awaismansha-00/aws-eks-terraform-feature-lab",
+    "tags": ["AWS", "EKS", "Terraform", "Helm", "Ingress", "Autoscaling", "CSI"]
+  },
+  {
+    "title": "Production Grade DevSecOps Project",
+    "summary": "Cloud-native DevSecOps platform for AWS EKS with Terraform infrastructure, QA and production Kubernetes environments, GitHub Actions security gates, image publishing, Argo CD sync, and External Secrets.",
+    "github": "https://github.com/awaismansha-00/production-grade-devsecops",
+    "tags": ["AWS", "Terraform", "EKS", "GitHub Actions", "Argo CD", "Prometheus", "Grafana"]
+  },
+  {
+    "title": "OpenTelemetry Demo DevOpsification",
+    "summary": "DevOps-focused deployment of the OpenTelemetry demo on AWS EKS using Terraform, Kubernetes manifests, GitHub Actions validation, Docker image updates, and a GitOps-ready workflow.",
+    "github": "https://github.com/awaismansha-00/opentelemetry-demo-devops",
+    "tags": ["AWS", "Terraform", "EKS", "OpenTelemetry", "GitHub Actions", "Argo CD", "Kubernetes"]
+  }
+]
