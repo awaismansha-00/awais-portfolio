@@ -1,6 +1,25 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { Float, Line, OrbitControls, PerspectiveCamera } from "@react-three/drei";
+import { FaAws } from "react-icons/fa";
+import {
+  SiArgo,
+  SiDocker,
+  SiElasticsearch,
+  SiFluentbit,
+  SiGit,
+  SiGithubactions,
+  SiGrafana,
+  SiIstio,
+  SiJaeger,
+  SiKibana,
+  SiKubernetes,
+  SiLinux,
+  SiOpentelemetry,
+  SiPrometheus,
+  SiPython,
+  SiTerraform,
+} from "react-icons/si";
 import blogPosts from "./content/blogs.json";
 import certificationGroups from "./content/certifications.json";
 import projects from "./content/projects.json";
@@ -8,35 +27,17 @@ import {
   ArrowRight,
   Award,
   BadgeCheck,
-  Box,
-  Braces,
   ChevronLeft,
   ChevronRight,
-  Clock3,
-  Cloud,
   CloudCog,
-  Code2,
-  Container,
   Copy,
-  Cpu,
-  Database,
   ExternalLink,
-  Gauge,
   GitBranch,
-  HardDrive,
-  KeyRound,
-  Medal,
   Mail,
   Menu,
   Network,
-  Package,
-  Search,
-  Server,
   ServerCog,
   ShieldCheck,
-  Terminal,
-  Timer,
-  Waypoints,
   Workflow,
   X,
 } from "lucide-react";
@@ -52,12 +53,12 @@ const profile = {
 };
 
 const navItems = [
-  { label: "Home", href: "#top" },
-  { label: "Work", href: "#work" },
-  { label: "Skills", href: "#skills" },
-  { label: "Blog", href: "#blog" },
-  { label: "Process", href: "#process" },
-  { label: "Contact", href: "#contact" },
+  { label: "Home", href: "/#top" },
+  { label: "Work", href: "/#work" },
+  { label: "Skills", href: "/#skills" },
+  { label: "Blog", href: "/#blog" },
+  { label: "Process", href: "/#process" },
+  { label: "Contact", href: "/#contact" },
 ];
 
 const skillGroups = [
@@ -65,44 +66,46 @@ const skillGroups = [
     title: "Cloud and Infrastructure",
     icon: CloudCog,
     items: [
-      { label: "AWS", icon: Cloud },
-      { label: "Terraform", icon: Box },
-      { label: "Linux", icon: Terminal },
-      { label: "Python", icon: Code2 },
+      { label: "AWS", icon: FaAws, color: "#ff9900" },
+      { label: "Terraform", icon: SiTerraform, color: "#844fba" },
+      { label: "Linux", icon: SiLinux, color: "#f5efe4" },
+      { label: "Python", icon: SiPython, color: "#3776ab" },
     ],
   },
   {
     title: "Containers and Orchestration",
     icon: ServerCog,
     items: [
-      { label: "Docker", icon: Container },
-      { label: "Kubernetes", icon: Waypoints },
-      { label: "Istio Service Mesh", icon: Network },
+      { label: "Docker", icon: SiDocker, color: "#2496ed" },
+      { label: "Kubernetes", icon: SiKubernetes, color: "#326ce5" },
+      { label: "Istio Service Mesh", icon: SiIstio, color: "#466bb0" },
     ],
   },
   {
     title: "Delivery and Version Control",
     icon: Workflow,
     items: [
-      { label: "Git", icon: GitBranch },
-      { label: "GitHub Actions", icon: Workflow },
-      { label: "Argo CD", icon: Timer },
+      { label: "Git", icon: SiGit, color: "#f05032" },
+      { label: "GitHub Actions", icon: SiGithubactions, color: "#2088ff" },
+      { label: "Argo CD", icon: SiArgo, color: "#ef7b4d" },
     ],
   },
   {
     title: "Observability",
     icon: ShieldCheck,
     items: [
-      { label: "Prometheus", icon: ShieldCheck },
-      { label: "Grafana", icon: Gauge },
-      { label: "Elasticsearch", icon: Search },
-      { label: "Fluent Bit", icon: Braces },
-      { label: "Kibana", icon: Database },
-      { label: "Jaeger", icon: Network },
-      { label: "OpenTelemetry", icon: Cpu },
+      { label: "Prometheus", icon: SiPrometheus, color: "#e6522c" },
+      { label: "Grafana", icon: SiGrafana, color: "#f46800" },
+      { label: "Elasticsearch", icon: SiElasticsearch, color: "#00bfb3" },
+      { label: "Fluent Bit", icon: SiFluentbit, color: "#49bda5" },
+      { label: "Kibana", icon: SiKibana, color: "#e8478b" },
+      { label: "Jaeger", icon: SiJaeger, color: "#66cfe3" },
+      { label: "OpenTelemetry", icon: SiOpentelemetry, color: "#f5efe4" },
     ],
   },
 ];
+
+const HOMEPAGE_PREVIEW_COUNT = 3;
 
 const processSteps = [
   [
@@ -163,18 +166,29 @@ function useActiveSection(ids) {
 
 function useDragScroll() {
   const ref = useRef(null);
-  const drag = useRef({ active: false, moved: false, startX: 0, scrollLeft: 0, suppressClick: false });
+  const drag = useRef({ active: false, moved: false, startX: 0, scrollLeft: 0, distance: 0, suppressClick: false });
 
-  const endDrag = () => {
+  const endDrag = (snap = true) => {
     if (!drag.current.active) return;
+    const { distance, moved, scrollLeft } = drag.current;
+    const track = ref.current;
     drag.current.active = false;
     document.body.style.userSelect = "";
 
-    if (drag.current.moved) {
+    if (snap && track && moved && Math.abs(distance) > 24) {
+      const amount = getCarouselScrollAmount(track);
+      if (amount > 0) {
+        const direction = distance < 0 ? 1 : -1;
+        track.scrollTo({ left: scrollLeft + direction * amount, behavior: "smooth" });
+      }
+    }
+
+    if (moved) {
       drag.current.suppressClick = true;
       window.setTimeout(() => {
         drag.current.suppressClick = false;
         drag.current.moved = false;
+        drag.current.distance = 0;
       }, 0);
     }
   };
@@ -188,6 +202,7 @@ function useDragScroll() {
         drag.current.moved = false;
         drag.current.startX = event.pageX;
         drag.current.scrollLeft = ref.current.scrollLeft;
+        drag.current.distance = 0;
         ref.current.setPointerCapture(event.pointerId);
         document.body.style.userSelect = "none";
       },
@@ -195,18 +210,19 @@ function useDragScroll() {
         if (event.pointerType !== "mouse") return;
         if (!drag.current.active || !ref.current) return;
         const distance = event.pageX - drag.current.startX;
+        drag.current.distance = distance;
         if (Math.abs(distance) > 5) {
           drag.current.moved = true;
         }
-        ref.current.scrollLeft = drag.current.scrollLeft - distance;
+        ref.current.scrollLeft = drag.current.scrollLeft - distance * 1.6;
         event.preventDefault();
       },
       onPointerUp: (event) => {
         if (event.pointerType !== "mouse") return;
         endDrag();
       },
-      onPointerCancel: endDrag,
-      onLostPointerCapture: endDrag,
+      onPointerCancel: () => endDrag(false),
+      onLostPointerCapture: () => endDrag(false),
       onDragStart: (event) => event.preventDefault(),
       onClickCapture: (event) => {
         if (!drag.current.suppressClick) return;
@@ -215,6 +231,44 @@ function useDragScroll() {
       },
     },
   };
+}
+
+function getCarouselState(track) {
+  if (!track) return { canScrollLeft: false, canScrollRight: false, isScrollable: false };
+  const maxScrollLeft = Math.max(0, track.scrollWidth - track.clientWidth);
+  const canScrollLeft = track.scrollLeft > 2;
+  const canScrollRight = track.scrollLeft < maxScrollLeft - 2;
+  return {
+    canScrollLeft,
+    canScrollRight,
+    isScrollable: maxScrollLeft > 2,
+  };
+}
+
+function useCarouselState(trackRef, itemCount) {
+  const [state, setState] = useState({ canScrollLeft: false, canScrollRight: false, isScrollable: false });
+
+  useEffect(() => {
+    const track = trackRef.current;
+    if (!track) return undefined;
+
+    const update = () => setState(getCarouselState(track));
+    update();
+
+    track.addEventListener("scroll", update, { passive: true });
+    window.addEventListener("resize", update);
+
+    const resizeObserver = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(update);
+    resizeObserver?.observe(track);
+
+    return () => {
+      track.removeEventListener("scroll", update);
+      window.removeEventListener("resize", update);
+      resizeObserver?.disconnect();
+    };
+  }, [trackRef, itemCount]);
+
+  return state;
 }
 
 function getCarouselScrollAmount(track) {
@@ -280,7 +334,7 @@ function Header() {
           aria-label="Primary navigation"
         >
           {navItems.map((item) => {
-            const isActive = activeId === item.href.slice(1);
+            const isActive = activeId === item.href.split("#")[1];
             return (
               <a
                 key={item.href}
@@ -469,8 +523,99 @@ function Hero() {
   );
 }
 
+function ProjectCard({ project, index, variant = "carousel", onScrollLeft, onScrollRight, canScrollLeft = false, canScrollRight = false }) {
+  const isCarousel = variant === "carousel";
+  const showCarouselControls = isCarousel && (canScrollLeft || canScrollRight);
+
+  return (
+    <article
+      data-carousel-card={isCarousel ? true : undefined}
+      className={`group overflow-hidden rounded-lg border border-white/10 bg-white/[0.055] shadow-2xl shadow-black/25 transition hover:-translate-y-1 hover:border-amber-300/40 focus-within:border-amber-300/40 ${
+        isCarousel ? "w-full shrink-0 snap-start" : "h-full"
+      }`}
+    >
+      <div className="relative aspect-[16/9] overflow-hidden border-b border-white/10 bg-[#0f1211]">
+        {project.image ? (
+          <img src={project.image} alt={`${project.title} architecture`} className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03] group-focus-within:scale-[1.03]" />
+        ) : (
+          <div className="grid h-full place-items-center bg-[linear-gradient(135deg,rgba(24,199,187,0.14),rgba(242,184,75,0.10)),#101413]">
+            <div className="grid place-items-center gap-3 text-center">
+              <span className="grid size-14 place-items-center rounded-full border border-cyan-300/30 bg-cyan-300/10 text-cyan-300">
+                <Network size={26} aria-hidden="true" />
+              </span>
+              <span className="text-xs font-black uppercase text-amber-300">Repository project</span>
+            </div>
+          </div>
+        )}
+        <div className="absolute inset-x-3 top-3 max-h-0 overflow-hidden rounded-lg border border-white/10 bg-[#0f1211]/92 opacity-0 shadow-xl shadow-black/30 backdrop-blur transition-all duration-300 group-hover:max-h-36 group-hover:opacity-100 group-focus-within:max-h-36 group-focus-within:opacity-100">
+          <ul className="flex flex-wrap gap-2 p-3" aria-label={`${project.title} tools`}>
+            {project.tags.map((tag) => (
+              <li key={tag} className="rounded-full border border-cyan-300/20 bg-cyan-300/10 px-2.5 py-1 text-xs font-bold text-[#d7dfd8]">
+                {tag}
+              </li>
+            ))}
+          </ul>
+        </div>
+        {showCarouselControls ? (
+          <div
+            data-testid="project-carousel-controls"
+            className="pointer-events-none absolute inset-y-0 left-3 right-3 flex items-center justify-between opacity-0 transition duration-300 group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100"
+          >
+            {canScrollLeft ? (
+              <button
+                type="button"
+                aria-label="Scroll projects left"
+                onPointerDown={(event) => event.stopPropagation()}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onScrollLeft?.();
+                }}
+                className="pointer-events-auto grid size-11 -translate-x-2 place-items-center rounded-full border border-white/20 bg-[#0f1211]/80 text-[#f5efe4] shadow-xl shadow-black/35 backdrop-blur transition hover:border-cyan-300/70 hover:bg-[#0f1211]/95 group-hover:translate-x-0 group-focus-within:translate-x-0 focus:outline-none focus:ring-2 focus:ring-cyan-200"
+              >
+                <ChevronLeft size={21} aria-hidden="true" />
+              </button>
+            ) : (
+              <span aria-hidden="true" />
+            )}
+            {canScrollRight ? (
+              <button
+                type="button"
+                aria-label="Scroll projects right"
+                onPointerDown={(event) => event.stopPropagation()}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onScrollRight?.();
+                }}
+                className="pointer-events-auto grid size-11 translate-x-2 place-items-center rounded-full border border-white/20 bg-[#0f1211]/80 text-[#f5efe4] shadow-xl shadow-black/35 backdrop-blur transition hover:border-cyan-300/70 hover:bg-[#0f1211]/95 group-hover:translate-x-0 group-focus-within:translate-x-0 focus:outline-none focus:ring-2 focus:ring-cyan-200"
+              >
+                <ChevronRight size={21} aria-hidden="true" />
+              </button>
+            ) : (
+              <span aria-hidden="true" />
+            )}
+          </div>
+        ) : null}
+      </div>
+      <div className={`flex flex-col p-6 ${isCarousel ? "min-h-[260px]" : "min-h-[300px]"}`}>
+        <div className="flex items-center justify-between gap-4">
+          <span className="grid size-11 place-items-center rounded-full border border-cyan-300/35 text-sm font-black text-cyan-300">
+            {String(index + 1).padStart(2, "0")}
+          </span>
+          <a href={project.github} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-white/15 bg-white/8 px-3 py-2 text-xs font-bold text-[#f5efe4] transition hover:border-cyan-300/60">
+            <GitBranch size={15} aria-hidden="true" /> GitHub
+          </a>
+        </div>
+        <h3 className="mt-8 max-w-xl text-2xl font-black leading-tight text-[#f5efe4]">{project.title}</h3>
+        <p className="mt-4 line-clamp-4 max-w-2xl leading-8 text-[#b6c1ba]">{project.summary}</p>
+      </div>
+    </article>
+  );
+}
+
 function Work() {
   const { ref: projectsTrack, dragProps: projectDragProps } = useDragScroll();
+  const featuredProjects = projects.slice(0, HOMEPAGE_PREVIEW_COUNT);
+  const projectCarouselState = useCarouselState(projectsTrack, featuredProjects.length);
   const scrollProjects = (direction) => {
     const track = projectsTrack.current;
     if (!track) return;
@@ -480,29 +625,14 @@ function Work() {
   return (
     <section id="work" className="border-t border-white/10 bg-[#0f1211] px-4 py-20 md:px-8 md:py-28">
       <div className="mx-auto max-w-7xl">
-        <div className="flex flex-wrap items-end justify-between gap-6">
-          <SectionHeading eyebrow="Selected Work" title="DevOps projects built around cloud, Kubernetes, and delivery systems.">
-            <p>Each project links to the GitHub repository, with concise notes on the platform work, automation, and operational patterns behind it.</p>
-          </SectionHeading>
-
-          <div className="flex gap-2" aria-label="Project carousel controls">
-            <button
-              type="button"
-              aria-label="Scroll projects left"
-              onClick={() => scrollProjects(-1)}
-              className="grid size-11 place-items-center rounded-full border border-white/15 bg-white/8 text-[#f5efe4] transition hover:border-cyan-300/60 hover:bg-white/12 focus:outline-none focus:ring-2 focus:ring-cyan-200"
-            >
-              <ChevronLeft size={20} aria-hidden="true" />
-            </button>
-            <button
-              type="button"
-              aria-label="Scroll projects right"
-              onClick={() => scrollProjects(1)}
-              className="grid size-11 place-items-center rounded-full border border-white/15 bg-white/8 text-[#f5efe4] transition hover:border-cyan-300/60 hover:bg-white/12 focus:outline-none focus:ring-2 focus:ring-cyan-200"
-            >
-              <ChevronRight size={20} aria-hidden="true" />
-            </button>
-          </div>
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <p className="text-xs font-black uppercase text-amber-300">Selected Work</p>
+          <a
+            href="/projects"
+            className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-cyan-300/45 bg-cyan-300/10 px-4 py-2 text-sm font-black text-[#f5efe4] transition hover:border-cyan-300/80 hover:bg-cyan-300/15 focus:outline-none focus:ring-2 focus:ring-cyan-200"
+          >
+            View All Projects <ArrowRight size={17} aria-hidden="true" />
+          </a>
         </div>
 
         <div
@@ -511,48 +641,16 @@ function Work() {
           className="mx-auto mt-10 flex max-w-4xl cursor-grab snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth pb-4 active:cursor-grabbing [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           {...projectDragProps}
         >
-          {projects.map((project, index) => (
-            <article
+          {featuredProjects.map((project, index) => (
+            <ProjectCard
               key={project.title}
-              data-carousel-card
-              className="group w-full shrink-0 snap-start overflow-hidden rounded-lg border border-white/10 bg-white/[0.055] shadow-2xl shadow-black/25 transition hover:-translate-y-1 hover:border-amber-300/40 focus-within:border-amber-300/40"
-            >
-              <div className="relative aspect-[16/9] overflow-hidden border-b border-white/10 bg-[#0f1211]">
-                {project.image ? (
-                  <img src={project.image} alt={`${project.title} architecture`} className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03] group-focus-within:scale-[1.03]" />
-                ) : (
-                  <div className="grid h-full place-items-center bg-[linear-gradient(135deg,rgba(24,199,187,0.14),rgba(242,184,75,0.10)),#101413]">
-                    <div className="grid place-items-center gap-3 text-center">
-                      <span className="grid size-14 place-items-center rounded-full border border-cyan-300/30 bg-cyan-300/10 text-cyan-300">
-                        <Network size={26} aria-hidden="true" />
-                      </span>
-                      <span className="text-xs font-black uppercase text-amber-300">Repository project</span>
-                    </div>
-                  </div>
-                )}
-                <div className="absolute inset-x-3 top-3 max-h-0 overflow-hidden rounded-lg border border-white/10 bg-[#0f1211]/92 opacity-0 shadow-xl shadow-black/30 backdrop-blur transition-all duration-300 group-hover:max-h-36 group-hover:opacity-100 group-focus-within:max-h-36 group-focus-within:opacity-100">
-                  <ul className="flex flex-wrap gap-2 p-3" aria-label={`${project.title} tools`}>
-                    {project.tags.map((tag) => (
-                      <li key={tag} className="rounded-full border border-cyan-300/20 bg-cyan-300/10 px-2.5 py-1 text-xs font-bold text-[#d7dfd8]">
-                        {tag}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-              <div className="flex min-h-[260px] flex-col p-6">
-                <div className="flex items-center justify-between gap-4">
-                  <span className="grid size-11 place-items-center rounded-full border border-cyan-300/35 text-sm font-black text-cyan-300">
-                    {String(index + 1).padStart(2, "0")}
-                  </span>
-                  <a href={project.github} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-white/15 bg-white/8 px-3 py-2 text-xs font-bold text-[#f5efe4] transition hover:border-cyan-300/60">
-                    <GitBranch size={15} aria-hidden="true" /> GitHub
-                  </a>
-                </div>
-                <h3 className="mt-8 max-w-xl text-2xl font-black leading-tight text-[#f5efe4]">{project.title}</h3>
-                <p className="mt-4 line-clamp-4 max-w-2xl leading-8 text-[#b6c1ba]">{project.summary}</p>
-              </div>
-            </article>
+              project={project}
+              index={index}
+              onScrollLeft={() => scrollProjects(-1)}
+              onScrollRight={() => scrollProjects(1)}
+              canScrollLeft={projectCarouselState.canScrollLeft}
+              canScrollRight={projectCarouselState.canScrollRight}
+            />
           ))}
         </div>
       </div>
@@ -611,9 +709,9 @@ function Skills() {
                 <Icon size={22} className="shrink-0 text-amber-300" aria-hidden="true" />
               </div>
               <ul className="mt-6 flex flex-wrap gap-2" aria-label={`${title} skills`}>
-                {items.map(({ label, icon: SkillIcon }) => (
+                {items.map(({ label, icon: SkillIcon, color }) => (
                   <li key={label} className="inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1.5 text-sm font-bold text-[#d7dfd8]">
-                    <SkillIcon size={15} className="shrink-0 text-cyan-300" data-skill-icon={label} aria-hidden="true" />
+                    <SkillIcon size={15} className="shrink-0" style={{ color }} data-skill-icon={label} aria-hidden="true" />
                     {label}
                   </li>
                 ))}
@@ -665,8 +763,87 @@ function Skills() {
   );
 }
 
+function BlogCard({ post, variant = "carousel", onScrollLeft, onScrollRight, canScrollLeft = false, canScrollRight = false }) {
+  const isCarousel = variant === "carousel";
+  const showCarouselControls = isCarousel && (canScrollLeft || canScrollRight);
+
+  return (
+    <article
+      data-carousel-card={isCarousel ? true : undefined}
+      className={`group overflow-hidden rounded-lg border border-white/10 bg-white/[0.055] shadow-2xl shadow-black/20 transition hover:-translate-y-1 hover:border-amber-300/40 ${
+        isCarousel ? "w-full shrink-0 snap-start" : "h-full"
+      }`}
+    >
+      {post.image || isCarousel ? (
+        <div className="relative aspect-[16/9] overflow-hidden border-b border-white/10 bg-[#0f1211]">
+          {post.image ? (
+            <img src={post.image} alt={`${post.title} architecture guide`} className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03] group-focus-within:scale-[1.03]" />
+          ) : (
+            <div className="grid h-full place-items-center bg-[linear-gradient(135deg,rgba(24,199,187,0.14),rgba(242,184,75,0.10)),#101413]">
+              <span className="text-xs font-black uppercase text-amber-300">Medium article</span>
+            </div>
+          )}
+          {showCarouselControls ? (
+            <div
+              data-testid="blog-carousel-controls"
+              className="pointer-events-none absolute inset-y-0 left-3 right-3 flex items-center justify-between opacity-0 transition duration-300 group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100"
+            >
+              {canScrollLeft ? (
+                <button
+                  type="button"
+                  aria-label="Scroll blogs left"
+                  onPointerDown={(event) => event.stopPropagation()}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onScrollLeft?.();
+                  }}
+                  className="pointer-events-auto grid size-11 -translate-x-2 place-items-center rounded-full border border-white/20 bg-[#0f1211]/80 text-[#f5efe4] shadow-xl shadow-black/35 backdrop-blur transition hover:border-amber-300/70 hover:bg-[#0f1211]/95 group-hover:translate-x-0 group-focus-within:translate-x-0 focus:outline-none focus:ring-2 focus:ring-amber-200"
+                >
+                  <ChevronLeft size={21} aria-hidden="true" />
+                </button>
+              ) : (
+                <span aria-hidden="true" />
+              )}
+              {canScrollRight ? (
+                <button
+                  type="button"
+                  aria-label="Scroll blogs right"
+                  onPointerDown={(event) => event.stopPropagation()}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onScrollRight?.();
+                  }}
+                  className="pointer-events-auto grid size-11 translate-x-2 place-items-center rounded-full border border-white/20 bg-[#0f1211]/80 text-[#f5efe4] shadow-xl shadow-black/35 backdrop-blur transition hover:border-amber-300/70 hover:bg-[#0f1211]/95 group-hover:translate-x-0 group-focus-within:translate-x-0 focus:outline-none focus:ring-2 focus:ring-amber-200"
+                >
+                  <ChevronRight size={21} aria-hidden="true" />
+                </button>
+              ) : (
+                <span aria-hidden="true" />
+              )}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+      <div className="p-5">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="max-w-2xl">
+            <p className="text-xs font-black uppercase text-cyan-300">Medium article</p>
+            <h3 className="mt-3 text-2xl font-black leading-tight text-[#f5efe4]">{post.title}</h3>
+          </div>
+          <a href={post.href} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-white/15 bg-white/8 px-3 py-2 text-xs font-bold text-[#f5efe4] transition hover:border-amber-300/60">
+            Read on Medium <ExternalLink size={15} aria-hidden="true" />
+          </a>
+        </div>
+        <p className="mt-4 max-w-3xl leading-8 text-[#b6c1ba]">{post.summary}</p>
+      </div>
+    </article>
+  );
+}
+
 function Blog() {
   const { ref: blogTrack, dragProps: blogDragProps } = useDragScroll();
+  const featuredPosts = blogPosts.slice(0, HOMEPAGE_PREVIEW_COUNT);
+  const blogCarouselState = useCarouselState(blogTrack, featuredPosts.length);
   const scrollBlogs = (direction) => {
     const track = blogTrack.current;
     if (!track) return;
@@ -676,63 +853,32 @@ function Blog() {
   return (
     <section id="blog" className="border-t border-white/10 bg-[linear-gradient(135deg,rgba(242,184,75,0.10),transparent_34%),#151917] px-4 py-20 md:px-8 md:py-28">
       <div className="mx-auto max-w-7xl">
-        <div className="grid gap-10 lg:grid-cols-[0.72fr_1.28fr]">
-          <SectionHeading eyebrow="Blog" title="Writing in public about DevOps practice.">
-            <p>Short versions live here, with each post linking out to Medium for the full technical walkthrough.</p>
-          </SectionHeading>
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <p className="text-xs font-black uppercase text-amber-300">Blog</p>
+          <a
+            href="/blogs"
+            className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-amber-300/45 bg-amber-300/10 px-4 py-2 text-sm font-black text-[#f5efe4] transition hover:border-amber-300/80 hover:bg-amber-300/15 focus:outline-none focus:ring-2 focus:ring-amber-200"
+          >
+            View All Blogs <ArrowRight size={17} aria-hidden="true" />
+          </a>
+        </div>
 
-          <div>
-            <div className="mb-4 flex justify-end gap-2" aria-label="Blog carousel controls">
-              <button
-                type="button"
-                aria-label="Scroll blogs left"
-                onClick={() => scrollBlogs(-1)}
-                className="grid size-11 place-items-center rounded-full border border-white/15 bg-white/8 text-[#f5efe4] transition hover:border-amber-300/60 hover:bg-white/12 focus:outline-none focus:ring-2 focus:ring-amber-200"
-              >
-                <ChevronLeft size={20} aria-hidden="true" />
-              </button>
-              <button
-                type="button"
-                aria-label="Scroll blogs right"
-                onClick={() => scrollBlogs(1)}
-                className="grid size-11 place-items-center rounded-full border border-white/15 bg-white/8 text-[#f5efe4] transition hover:border-amber-300/60 hover:bg-white/12 focus:outline-none focus:ring-2 focus:ring-amber-200"
-              >
-                <ChevronRight size={20} aria-hidden="true" />
-              </button>
-            </div>
-            <div
-              ref={blogTrack}
-              data-testid="blog-carousel"
-              className="flex cursor-grab snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth pb-4 active:cursor-grabbing [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-              {...blogDragProps}
-            >
-            {blogPosts.map((post) => (
-              <article
-                key={post.title}
-                data-carousel-card
-                className="w-full shrink-0 snap-start overflow-hidden rounded-lg border border-white/10 bg-white/[0.055] shadow-2xl shadow-black/20 transition hover:-translate-y-1 hover:border-amber-300/40"
-              >
-                {post.image ? (
-                  <div className="border-b border-white/10 bg-[#0f1211]">
-                    <img src={post.image} alt={`${post.title} architecture guide`} className="h-auto w-full object-cover" />
-                  </div>
-                ) : null}
-                <div className="p-5">
-                  <div className="flex flex-wrap items-start justify-between gap-4">
-                    <div className="max-w-2xl">
-                      <p className="text-xs font-black uppercase text-cyan-300">Medium article</p>
-                      <h3 className="mt-3 text-2xl font-black leading-tight text-[#f5efe4]">{post.title}</h3>
-                    </div>
-                    <a href={post.href} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-white/15 bg-white/8 px-3 py-2 text-xs font-bold text-[#f5efe4] transition hover:border-amber-300/60">
-                      Read on Medium <ExternalLink size={15} aria-hidden="true" />
-                    </a>
-                  </div>
-                  <p className="mt-4 max-w-3xl leading-8 text-[#b6c1ba]">{post.summary}</p>
-                </div>
-              </article>
-            ))}
-            </div>
-          </div>
+        <div
+          ref={blogTrack}
+          data-testid="blog-carousel"
+          className="mx-auto mt-10 flex max-w-4xl cursor-grab snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth pb-4 active:cursor-grabbing [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          {...blogDragProps}
+        >
+          {featuredPosts.map((post) => (
+            <BlogCard
+              key={post.title}
+              post={post}
+              onScrollLeft={() => scrollBlogs(-1)}
+              onScrollRight={() => scrollBlogs(1)}
+              canScrollLeft={blogCarouselState.canScrollLeft}
+              canScrollRight={blogCarouselState.canScrollRight}
+            />
+          ))}
         </div>
       </div>
     </section>
@@ -808,21 +954,68 @@ function Contact() {
   );
 }
 
+function ListingPage({ type }) {
+  const isProjects = type === "projects";
+  const title = isProjects ? "All DevOps projects" : "All technical writing";
+  const eyebrow = isProjects ? "Projects" : "Blog";
+  const body = isProjects
+    ? "A fuller view of the infrastructure, Kubernetes, automation, and delivery systems behind the selected work."
+    : "All published DevOps notes and walkthroughs, with each post linking to the full article on Medium.";
+  const items = isProjects ? projects : blogPosts;
+
+  return (
+    <main id="content">
+      <section id="top" className="min-h-screen border-t border-white/10 bg-[linear-gradient(135deg,rgba(24,199,187,0.10),transparent_32%),linear-gradient(315deg,rgba(242,184,75,0.10),transparent_34%),#0f1211] px-4 pb-20 pt-32 md:px-8 md:pb-28 md:pt-36">
+        <div className="mx-auto max-w-7xl">
+          <div className="flex flex-wrap items-end justify-between gap-6">
+            <SectionHeading eyebrow={eyebrow} title={title}>
+              <p>{body}</p>
+            </SectionHeading>
+            <a
+              href={isProjects ? "/#work" : "/#blog"}
+              className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-white/15 bg-white/8 px-4 py-2 text-sm font-bold text-[#f5efe4] transition hover:border-cyan-300/60 hover:bg-white/12 focus:outline-none focus:ring-2 focus:ring-cyan-200"
+            >
+              <ChevronLeft size={17} aria-hidden="true" /> Back to homepage
+            </a>
+          </div>
+
+          <div className={`mt-10 grid gap-5 ${isProjects ? "md:grid-cols-2 xl:grid-cols-3" : "lg:grid-cols-2"}`}>
+            {items.map((item, index) =>
+              isProjects ? (
+                <ProjectCard key={item.title} project={item} index={index} variant="grid" />
+              ) : (
+                <BlogCard key={item.title} post={item} variant="grid" />
+              ),
+            )}
+          </div>
+        </div>
+      </section>
+    </main>
+  );
+}
+
 function App() {
+  const normalizedPath = window.location.pathname.replace(/\/$/, "") || "/";
+  const page = normalizedPath === "/projects" || normalizedPath === "/blogs" ? normalizedPath.slice(1) : "home";
+
   return (
     <div className="min-h-screen bg-[#0f1211] text-[#f5efe4] selection:bg-cyan-300/30">
       <a href="#content" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[60] focus:rounded-lg focus:border focus:border-cyan-300 focus:bg-[#0f1211] focus:px-4 focus:py-3">
         Skip to content
       </a>
       <Header />
-      <main id="content">
-        <Hero />
-        <Work />
-        <Skills />
-        <Blog />
-        <Process />
-        <Contact />
-      </main>
+      {page === "home" ? (
+        <main id="content">
+          <Hero />
+          <Work />
+          <Skills />
+          <Blog />
+          <Process />
+          <Contact />
+        </main>
+      ) : (
+        <ListingPage type={page} />
+      )}
       <footer className="border-t border-white/10 bg-[#0b0e0d] px-4 py-8 text-[#b6c1ba] md:px-8">
         <div className="mx-auto max-w-7xl">
           <p>&copy; {new Date().getFullYear()} {profile.name}.</p>
