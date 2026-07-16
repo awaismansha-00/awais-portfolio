@@ -1,6 +1,5 @@
-import { Suspense, useEffect, useMemo, useRef, useState } from "react";
-import { Canvas, useFrame } from "@react-three/fiber";
-import { Float, Line, OrbitControls, PerspectiveCamera } from "@react-three/drei";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { AnimatePresence, motion, useInView, useMotionValue, useReducedMotion, useScroll, useSpring, useTransform } from "motion/react";
 import { FaAws } from "react-icons/fa";
 import {
   SiArgo,
@@ -33,7 +32,6 @@ import {
   Copy,
   ExternalLink,
   GitBranch,
-  Mail,
   Menu,
   Network,
   ServerCog,
@@ -58,7 +56,7 @@ const navItems = [
   { label: "Skills", href: "/#skills" },
   { label: "Blog", href: "/#blog" },
   { label: "Process", href: "/#process" },
-  { label: "Contact", href: "/#contact" },
+  { label: "LET'S WORK TOGETHER", href: "/#contact" },
 ];
 
 const skillGroups = [
@@ -106,6 +104,251 @@ const skillGroups = [
 ];
 
 const HOMEPAGE_PREVIEW_COUNT = 3;
+
+const MOTION = {
+  durations: {
+    fast: 0.22,
+    route: 0.46,
+    loader: 0.9,
+    reducedLoader: 0.18,
+    reveal: 0.52,
+  },
+  ease: [0.22, 1, 0.36, 1],
+  routeEase: [0.65, 0, 0.35, 1],
+  stagger: 0.06,
+  viewport: { once: true, amount: 0.18 },
+  depth: { perspective: 900, tilt: 4, card: 8 },
+  blur: { background: 18 },
+};
+
+const INTERNAL_PATHS = new Set(["/", "/projects", "/blogs"]);
+
+function useInitialLoader() {
+  const prefersReducedMotion = useReducedMotion();
+  const [isVisible, setIsVisible] = useState(() => {
+    try {
+      if (window.sessionStorage.getItem("awais-portfolio-loader") === "shown") return false;
+      window.sessionStorage.setItem("awais-portfolio-loader", "shown");
+      return true;
+    } catch {
+      return true;
+    }
+  });
+
+  useEffect(() => {
+    const timeout = window.setTimeout(
+      () => setIsVisible(false),
+      (prefersReducedMotion ? MOTION.durations.reducedLoader : MOTION.durations.loader) * 1000,
+    );
+    return () => window.clearTimeout(timeout);
+  }, [prefersReducedMotion]);
+
+  return { isVisible, prefersReducedMotion };
+}
+
+function usePortfolioNavigation(setPage, setTransitioning, scrollPositions) {
+  useEffect(() => {
+    const navigate = (href, replace = false) => {
+      const url = new URL(href, window.location.origin);
+      if (url.origin !== window.location.origin || !INTERNAL_PATHS.has(url.pathname)) return false;
+
+      const nextUrl = `${url.pathname}${url.search}${url.hash}`;
+      if (nextUrl === `${window.location.pathname}${window.location.search}${window.location.hash}`) return true;
+
+      scrollPositions.current[window.location.pathname] = window.scrollY;
+      if (replace) window.history.replaceState({}, "", nextUrl);
+      else window.history.pushState({}, "", nextUrl);
+      setTransitioning(true);
+      setPage(url.pathname === "/" ? "home" : url.pathname.slice(1));
+      return true;
+    };
+
+    const onClick = (event) => {
+      if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      const link = event.target.closest("a");
+      if (!link || link.target === "_blank" || link.hasAttribute("download")) return;
+      const href = link.getAttribute("href");
+      if (!href || href.startsWith("#") || href.startsWith("mailto:") || href.startsWith("tel:")) return;
+      if (navigate(href)) event.preventDefault();
+    };
+
+    const onPopState = () => {
+      setTransitioning(true);
+      setPage(INTERNAL_PATHS.has(window.location.pathname) && window.location.pathname !== "/" ? window.location.pathname.slice(1) : "home");
+    };
+
+    document.addEventListener("click", onClick);
+    window.addEventListener("popstate", onPopState);
+    return () => {
+      document.removeEventListener("click", onClick);
+      window.removeEventListener("popstate", onPopState);
+    };
+  }, [scrollPositions, setPage, setTransitioning]);
+}
+
+function useRouteScroll(page, scrollPositions) {
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      const hash = window.location.hash;
+      if (page === "home" && hash) {
+        document.querySelector(hash)?.scrollIntoView({ block: "start" });
+      } else if (page !== "home") {
+        window.scrollTo({ top: 0, behavior: "auto" });
+      } else if (scrollPositions.current["/"]) {
+        window.scrollTo({ top: scrollPositions.current["/"] , behavior: "auto" });
+      }
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [page, scrollPositions]);
+}
+
+function Loader({ reducedMotion }) {
+  return (
+    <motion.div
+      className="portfolio-loader"
+      initial={{ opacity: 1 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: reducedMotion ? 0.01 : 0.24, ease: MOTION.ease }}
+      aria-label="Loading portfolio"
+      role="status"
+    >
+      <div className="portfolio-loader__system" aria-hidden="true">
+        {[0, 1, 2, 3].map((block) => (
+          <motion.span
+            key={block}
+            className="portfolio-loader__block"
+            initial={reducedMotion ? false : { opacity: 0, scale: 0.35, x: (block % 2 ? 1 : -1) * 28, y: block < 2 ? -28 : 28 }}
+            animate={{ opacity: 1, scale: 1, x: 0, y: 0 }}
+            transition={{ duration: reducedMotion ? 0.01 : 0.42, delay: reducedMotion ? 0 : block * MOTION.stagger, ease: MOTION.ease }}
+          />
+        ))}
+        <span className="portfolio-loader__cross" />
+      </div>
+      <motion.p
+        className="portfolio-loader__name"
+        initial={reducedMotion ? false : { opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: reducedMotion ? 0.01 : 0.34, delay: reducedMotion ? 0 : 0.35, ease: MOTION.ease }}
+      >
+        Awais Mansha
+      </motion.p>
+      <span className="portfolio-loader__label">DevOps Engineer</span>
+    </motion.div>
+  );
+}
+
+function usePageVisibility() {
+  const [isVisible, setIsVisible] = useState(() => typeof document === "undefined" || document.visibilityState !== "hidden");
+
+  useEffect(() => {
+    const onVisibilityChange = () => setIsVisible(document.visibilityState !== "hidden");
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", onVisibilityChange);
+  }, []);
+
+  return isVisible;
+}
+
+function useMediaQuery(query) {
+  const [matches, setMatches] = useState(false);
+
+  useEffect(() => {
+    const media = window.matchMedia(query);
+    const update = () => setMatches(media.matches);
+    update();
+    media.addEventListener?.("change", update);
+    return () => media.removeEventListener?.("change", update);
+  }, [query]);
+
+  return matches;
+}
+
+function Reveal({ children, className = "", delay = 0, amount = MOTION.viewport.amount, y = 18 }) {
+  const reducedMotion = useReducedMotion();
+  return (
+    <motion.div
+      className={className}
+      initial={reducedMotion ? false : { opacity: 0, y }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, amount }}
+      transition={{ duration: reducedMotion ? 0.01 : MOTION.durations.reveal, delay: reducedMotion ? 0 : delay, ease: MOTION.ease }}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
+function useTilt(enabled) {
+  const rotateX = useMotionValue(0);
+  const rotateY = useMotionValue(0);
+  const reset = () => {
+    rotateX.set(0);
+    rotateY.set(0);
+  };
+
+  return {
+    style: enabled ? { rotateX, rotateY, transformPerspective: MOTION.depth.perspective } : undefined,
+    onPointerMove: enabled
+      ? (event) => {
+          const rect = event.currentTarget.getBoundingClientRect();
+          const x = (event.clientX - rect.left) / rect.width - 0.5;
+          const y = (event.clientY - rect.top) / rect.height - 0.5;
+          rotateX.set(-y * MOTION.depth.tilt);
+          rotateY.set(x * MOTION.depth.tilt);
+        }
+      : undefined,
+    onPointerLeave: enabled ? reset : undefined,
+  };
+}
+
+function GlobalBackground({ reducedMotion, isMobile }) {
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: false, amount: 0.01 });
+  const isPageVisible = usePageVisibility();
+  const active = isInView && isPageVisible && !reducedMotion && !isMobile;
+  const nodes = ["14% 28%", "82% 19%", "68% 68%", "27% 78%", "92% 84%"];
+
+  return (
+    <div ref={ref} className={`global-background ${active ? "global-background--active" : ""}`} aria-hidden="true">
+      <div className="global-background__grid" />
+      <div className="global-background__glow" />
+      <div className="global-background__lines" />
+      {nodes.map((position, index) => <span key={position} className={`global-background__node global-background__node--${index}`} style={{ left: position.split(" ")[0], top: position.split(" ")[1] }} />)}
+    </div>
+  );
+}
+
+function RotatingHeroWord({ reducedMotion }) {
+  const words = ["PURPOSE", "IMPACT", "INTENT"];
+  const [wordIndex, setWordIndex] = useState(0);
+
+  useEffect(() => {
+    if (reducedMotion) return undefined;
+    const interval = window.setInterval(() => {
+      setWordIndex((current) => (current + 1) % words.length);
+    }, 2800);
+    return () => window.clearInterval(interval);
+  }, [reducedMotion]);
+
+  return (
+    <span className="hero-rotating-word" aria-live="polite">
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.span
+          key={words[wordIndex]}
+          className="hero-section__accent hero-rotating-word__value"
+          initial={reducedMotion ? false : { opacity: 0, y: "70%", rotateX: -70 }}
+          animate={{ opacity: 1, y: "0%", rotateX: 0 }}
+          exit={reducedMotion ? undefined : { opacity: 0, y: "-70%", rotateX: 70 }}
+          transition={{ duration: reducedMotion ? 0.01 : 0.42, ease: MOTION.ease }}
+        >
+          {words[wordIndex]}
+        </motion.span>
+      </AnimatePresence>
+      <span className="sr-only">Purpose, Impact, Intent</span>
+    </span>
+  );
+}
 
 const processSteps = [
   [
@@ -234,19 +477,27 @@ function useDragScroll() {
 }
 
 function getCarouselState(track) {
-  if (!track) return { canScrollLeft: false, canScrollRight: false, isScrollable: false };
+  if (!track) return { canScrollLeft: false, canScrollRight: false, isScrollable: false, progress: 0, activeIndex: 0 };
   const maxScrollLeft = Math.max(0, track.scrollWidth - track.clientWidth);
   const canScrollLeft = track.scrollLeft > 2;
   const canScrollRight = track.scrollLeft < maxScrollLeft - 2;
+  const cards = [...track.querySelectorAll("[data-carousel-card]")];
+  const trackCenter = track.scrollLeft + track.clientWidth / 2;
+  const activeIndex = cards.reduce((closest, card, index) => {
+    const center = card.offsetLeft + card.offsetWidth / 2;
+    return Math.abs(center - trackCenter) < Math.abs((cards[closest]?.offsetLeft + cards[closest]?.offsetWidth / 2 || 0) - trackCenter) ? index : closest;
+  }, 0);
   return {
     canScrollLeft,
     canScrollRight,
     isScrollable: maxScrollLeft > 2,
+    progress: maxScrollLeft ? track.scrollLeft / maxScrollLeft : 0,
+    activeIndex,
   };
 }
 
 function useCarouselState(trackRef, itemCount) {
-  const [state, setState] = useState({ canScrollLeft: false, canScrollRight: false, isScrollable: false });
+  const [state, setState] = useState({ canScrollLeft: false, canScrollRight: false, isScrollable: false, progress: 0, activeIndex: 0 });
 
   useEffect(() => {
     const track = trackRef.current;
@@ -342,7 +593,7 @@ function Header() {
                 onClick={() => setIsOpen(false)}
                 className={`rounded-md px-4 py-3 text-sm font-semibold transition md:rounded-full md:px-3 md:py-2 ${
                   isActive ? "bg-white/10 text-[#f5efe4]" : "text-[#b6c1ba] hover:bg-white/8 hover:text-[#f5efe4]"
-                } ${item.href === "#contact" ? "border border-amber-300/35 text-[#f5efe4]" : ""}`}
+                } ${item.href.endsWith("#contact") ? "hero-contact-nav" : ""}`}
               >
                 {item.label}
               </a>
@@ -351,107 +602,6 @@ function Header() {
         </nav>
       </div>
     </header>
-  );
-}
-
-function InfrastructureScene() {
-  const group = useRef();
-  const nodePositions = useMemo(
-    () => [
-      [-3.8, -1.35, -0.2],
-      [-2.2, -0.35, 0.2],
-      [-0.6, -1.1, -0.25],
-      [0.75, 0.08, 0.18],
-      [2.2, -0.72, -0.16],
-      [3.4, 0.62, 0.22],
-      [1.25, 1.22, -0.22],
-      [-1.8, 1.12, 0.14],
-    ],
-    [],
-  );
-
-  useFrame(({ clock, pointer }) => {
-    if (!group.current) return;
-    group.current.rotation.y = Math.sin(clock.elapsedTime * 0.22) * 0.16 + pointer.x * 0.07;
-    group.current.rotation.x = -0.08 + pointer.y * 0.04;
-  });
-
-  const lineSegments = [
-    [nodePositions[0], nodePositions[1]],
-    [nodePositions[1], nodePositions[2]],
-    [nodePositions[1], nodePositions[7]],
-    [nodePositions[2], nodePositions[3]],
-    [nodePositions[3], nodePositions[4]],
-    [nodePositions[3], nodePositions[6]],
-    [nodePositions[4], nodePositions[5]],
-    [nodePositions[6], nodePositions[5]],
-    [nodePositions[7], nodePositions[6]],
-  ];
-
-  return (
-    <group ref={group} position={[0.8, -0.1, 0]} scale={0.92}>
-      <Float speed={1.1} rotationIntensity={0.12} floatIntensity={0.34}>
-        <mesh position={[0, 0.12, -0.35]} rotation={[-Math.PI / 2, 0, 0]}>
-          <torusGeometry args={[3.75, 0.018, 8, 180]} />
-          <meshStandardMaterial color="#18c7bb" emissive="#0d8d84" emissiveIntensity={0.55} transparent opacity={0.68} />
-        </mesh>
-
-        {lineSegments.map(([start, end], index) => (
-          <Line
-            key={`${start.join("-")}-${index}`}
-            points={[start, end]}
-            color={index % 3 === 0 ? "#f2b84b" : "#18c7bb"}
-            lineWidth={1.4}
-            transparent
-            opacity={0.75}
-          />
-        ))}
-
-        {nodePositions.map((position, index) => (
-          <Float key={position.join("-")} speed={1.4 + index * 0.08} rotationIntensity={0.25} floatIntensity={0.16}>
-            <mesh position={position}>
-              <boxGeometry args={[0.42, 0.42, 0.42]} />
-              <meshStandardMaterial
-                color={index % 3 === 0 ? "#f2b84b" : "#18c7bb"}
-                emissive={index % 3 === 0 ? "#8f5d12" : "#0d8d84"}
-                emissiveIntensity={0.45}
-                roughness={0.38}
-                metalness={0.55}
-              />
-            </mesh>
-          </Float>
-        ))}
-
-        <mesh position={[0, 0.05, 0.38]}>
-          <sphereGeometry args={[0.72, 40, 40]} />
-          <meshStandardMaterial color="#f5efe4" emissive="#18c7bb" emissiveIntensity={0.18} roughness={0.2} metalness={0.35} />
-        </mesh>
-        <mesh position={[0, 0.05, 0.38]}>
-          <sphereGeometry args={[0.84, 40, 40]} />
-          <meshBasicMaterial color="#18c7bb" transparent opacity={0.1} wireframe />
-        </mesh>
-      </Float>
-    </group>
-  );
-}
-
-function HeroScene() {
-  return (
-    <Canvas
-      className="canvas-probe"
-      dpr={[1, 1.7]}
-      gl={{ antialias: true, alpha: true, preserveDrawingBuffer: true }}
-      aria-hidden="true"
-    >
-      <PerspectiveCamera makeDefault position={[0, 0, 7.2]} fov={42} />
-      <ambientLight intensity={1.1} />
-      <directionalLight position={[3, 4, 5]} intensity={2.2} color="#f5efe4" />
-      <pointLight position={[-4, -2, 3]} intensity={1.4} color="#18c7bb" />
-      <Suspense fallback={null}>
-        <InfrastructureScene />
-      </Suspense>
-      <OrbitControls enableZoom={false} enablePan={false} rotateSpeed={0.18} autoRotate autoRotateSpeed={0.38} />
-    </Canvas>
   );
 }
 
@@ -465,74 +615,82 @@ function SectionHeading({ eyebrow, title, children, className = "" }) {
   );
 }
 
-function Hero() {
+function Hero({ isReady, reducedMotion }) {
   return (
-    <section id="top" className="relative isolate min-h-[92svh] overflow-hidden px-4 pb-14 pt-32 md:px-8 md:pt-36">
-      <img
-        className="absolute inset-0 -z-20 h-full w-full object-cover"
-        src="/assets/devops-hero.png"
-        alt=""
-        aria-hidden="true"
-      />
-      <div className="absolute inset-0 -z-10 bg-[linear-gradient(90deg,rgba(15,18,17,0.98)_0%,rgba(15,18,17,0.82)_38%,rgba(15,18,17,0.45)_74%,rgba(15,18,17,0.82)_100%)]" />
-      <div className="absolute inset-0 -z-10 bg-[linear-gradient(180deg,rgba(15,18,17,0.08),rgba(15,18,17,0.98)_94%)]" />
-      <div className="pointer-events-none absolute inset-0 z-0 opacity-45 md:opacity-55 [mask-image:linear-gradient(90deg,transparent_0%,transparent_34%,black_58%,black_100%)]" data-canvas-frame>
-        <HeroScene />
+    <section id="top" className="hero-section relative isolate min-h-[92svh] overflow-hidden px-4 pb-10 pt-28 md:px-8 md:pt-32">
+      <div className="hero-section__base" aria-hidden="true" />
+      <div className="hero-section__grid" aria-hidden="true" />
+      <div className="hero-section__visual" aria-hidden="true">
+        <img className="hero-section__image" src="/assets/awais-hero-portrait.png" alt="" />
+        <div className="hero-section__image-wash" />
       </div>
+      <div className="hero-section__visual-glow" aria-hidden="true" />
 
-      <div className="relative z-10 mx-auto flex max-w-7xl items-center lg:min-h-[calc(92svh-9rem)]">
-        <div className="max-w-3xl">
-          <p className="mb-5 text-xs font-black uppercase text-amber-300">Cloud platforms / CI/CD / Reliability</p>
-          <h1 className="max-w-[12ch] text-balance text-5xl font-black leading-[0.98] text-[#f5efe4] md:text-7xl xl:text-8xl">
-            Awais Mansha builds resilient delivery platforms.
-          </h1>
-          <p className="mt-6 max-w-2xl text-lg leading-8 text-[#d7dfd8] md:text-xl">
-            DevOps engineer focused on infrastructure as code, Kubernetes operations, automated release systems, and observability that makes production easier to understand.
-          </p>
-
-          <div className="mt-8 flex flex-wrap gap-3">
-            <a
-              href="#work"
-              className="inline-flex min-h-12 items-center gap-2 rounded-lg border border-cyan-300/60 bg-cyan-300 px-5 py-3 text-sm font-black text-[#071211] transition hover:-translate-y-0.5 hover:bg-[#7ee7df] focus:outline-none focus:ring-2 focus:ring-cyan-200"
-            >
-              View Projects <ArrowRight size={18} aria-hidden="true" />
-            </a>
-            <a
-              href={`mailto:${profile.email}`}
-              className="inline-flex min-h-12 items-center gap-2 rounded-lg border border-white/20 bg-white/8 px-5 py-3 text-sm font-bold text-[#f5efe4] transition hover:-translate-y-0.5 hover:border-amber-300/60 hover:bg-white/12 focus:outline-none focus:ring-2 focus:ring-amber-200"
-            >
-              <Mail size={18} aria-hidden="true" /> Email Awais
-            </a>
+      <div className="relative z-10 mx-auto flex max-w-7xl items-center lg:min-h-[calc(92svh-8rem)]">
+        <motion.div
+          className="hero-section__content flex w-full max-w-7xl flex-col justify-between"
+          initial={reducedMotion ? false : { opacity: 0, y: 22 }}
+          animate={isReady || reducedMotion ? { opacity: 1, y: 0 } : { opacity: 0, y: 22 }}
+          transition={{ duration: reducedMotion ? 0.01 : MOTION.durations.reveal, delay: reducedMotion ? 0 : 0.08, ease: MOTION.ease }}
+        >
+          <div className="hero-section__headline-block">
+            <p className="hero-section__eyebrow mb-5">Devops engineer, cloud security and platform engineering</p>
+            <h1 className="hero-section__title max-w-[12ch] text-balance">
+              <span>BUILD WITH </span>
+              <RotatingHeroWord reducedMotion={reducedMotion} />
+            </h1>
           </div>
 
-          <dl className="mt-10 grid overflow-hidden rounded-lg border border-white/10 bg-white/5 shadow-2xl shadow-black/30 backdrop-blur md:grid-cols-3">
-            {[
-              ["Current focus", "Kubernetes, Terraform, GitOps"],
-              ["Best with", "Platform, cloud, and SRE teams"],
-              ["Operating style", "Automated, observable, secure"],
-            ].map(([label, value]) => (
-              <div key={label} className="border-white/10 p-4 md:border-r md:last:border-r-0">
-                <dt className="text-xs font-bold uppercase text-[#b6c1ba]">{label}</dt>
-                <dd className="mt-2 text-sm font-extrabold text-[#f5efe4]">{value}</dd>
-              </div>
-            ))}
-          </dl>
-        </div>
+          <div className="hero-section__bottom-row mt-10">
+            <div className="hero-section__actions flex flex-wrap gap-3">
+              <a
+                href="#work"
+                className="hero-section__primary-button inline-flex min-h-12 items-center gap-2 rounded-lg px-5 py-3 text-sm font-black transition hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-lime-300"
+              >
+                View Projects <ArrowRight size={18} aria-hidden="true" />
+              </a>
+              <button
+                type="button"
+                className="hero-section__cv-button inline-flex min-h-12 items-center gap-2 rounded-lg px-5 py-3 text-sm font-black transition focus:outline-none focus:ring-2 focus:ring-lime-300"
+                aria-disabled="true"
+                aria-label="Download CV — CV coming soon"
+                title="CV coming soon"
+                disabled
+              >
+                Download CV <ArrowRight size={18} aria-hidden="true" />
+              </button>
+            </div>
+            <p className="hero-section__description max-w-2xl">
+              I’m Awais Mansha — a DevOps and Cloud Engineer focused on reusable infrastructure, secure cloud platforms, and automated delivery systems built to evolve.
+            </p>
+          </div>
+        </motion.div>
       </div>
     </section>
   );
 }
 
-function ProjectCard({ project, index, variant = "carousel", onScrollLeft, onScrollRight, canScrollLeft = false, canScrollRight = false }) {
+function ProjectCard({ project, index, variant = "carousel", onScrollLeft, onScrollRight, canScrollLeft = false, canScrollRight = false, isFocused = false }) {
   const isCarousel = variant === "carousel";
   const showCarouselControls = isCarousel && (canScrollLeft || canScrollRight);
+  const reducedMotion = useReducedMotion();
+  const finePointer = useMediaQuery("(hover: hover) and (pointer: fine)");
+  const tilt = useTilt(isCarousel && finePointer && !reducedMotion);
 
   return (
-    <article
+    <motion.article
       data-carousel-card={isCarousel ? true : undefined}
-      className={`group overflow-hidden rounded-lg border border-white/10 bg-white/[0.055] shadow-2xl shadow-black/25 transition hover:-translate-y-1 hover:border-amber-300/40 focus-within:border-amber-300/40 ${
+      data-card-focus={isCarousel ? (isFocused ? "true" : "false") : undefined}
+      className={`group portfolio-card overflow-hidden rounded-lg border border-white/10 bg-white/[0.055] shadow-2xl shadow-black/25 transition hover:-translate-y-1 hover:border-amber-300/40 focus-within:border-amber-300/40 ${
         isCarousel ? "w-full shrink-0 snap-start" : "h-full"
       }`}
+      style={tilt.style}
+      onPointerMove={tilt.onPointerMove}
+      onPointerLeave={tilt.onPointerLeave}
+      initial={reducedMotion ? false : { opacity: 0, y: 18 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, amount: 0.15 }}
+      transition={{ duration: reducedMotion ? 0.01 : MOTION.durations.reveal, delay: reducedMotion ? 0 : index * MOTION.stagger, ease: MOTION.ease }}
     >
       <div className="relative aspect-[16/9] overflow-hidden border-b border-white/10 bg-[#0f1211]">
         {project.image ? (
@@ -608,7 +766,7 @@ function ProjectCard({ project, index, variant = "carousel", onScrollLeft, onScr
         <h3 className="mt-8 max-w-xl text-2xl font-black leading-tight text-[#f5efe4]">{project.title}</h3>
         <p className="mt-4 line-clamp-4 max-w-2xl leading-8 text-[#b6c1ba]">{project.summary}</p>
       </div>
-    </article>
+    </motion.article>
   );
 }
 
@@ -650,8 +808,12 @@ function Work() {
               onScrollRight={() => scrollProjects(1)}
               canScrollLeft={projectCarouselState.canScrollLeft}
               canScrollRight={projectCarouselState.canScrollRight}
+              isFocused={projectCarouselState.activeIndex === index}
             />
           ))}
+        </div>
+        <div className="mx-auto mt-4 h-px max-w-4xl overflow-hidden bg-white/10" aria-label="Project carousel progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow={Math.round(projectCarouselState.progress * 100)}>
+          <motion.div className="h-full origin-left bg-cyan-300" animate={{ scaleX: Math.max(0.08, projectCarouselState.progress) }} transition={{ duration: 0.2, ease: "easeOut" }} />
         </div>
       </div>
     </section>
@@ -694,34 +856,44 @@ function CertificationBadge({ item }) {
 }
 
 function Skills() {
+  const reducedMotion = useReducedMotion();
   return (
-    <section id="skills" className="border-t border-white/10 bg-[#101413] px-4 py-20 md:px-8 md:py-28">
+    <section id="skills" className="relative isolate overflow-hidden border-t border-white/10 bg-[#101413] px-4 py-20 md:px-8 md:py-28">
+      <div className="skills-grid-background" aria-hidden="true" />
       <div className="mx-auto max-w-7xl">
         <SectionHeading eyebrow="Skills" title="Hands-on tools across cloud, delivery, and observability.">
           <p>A focused DevOps toolkit for building, shipping, monitoring, and operating production systems.</p>
         </SectionHeading>
 
         <div className="mt-10 grid gap-4 lg:grid-cols-4">
-          {skillGroups.map(({ title, icon: Icon, items }) => (
-            <article key={title} className="rounded-lg border border-white/10 bg-white/[0.055] p-5 shadow-2xl shadow-black/20">
+          {skillGroups.map(({ title, icon: Icon, items }, groupIndex) => (
+            <motion.article
+              key={title}
+              className="skill-group rounded-lg border border-white/10 bg-white/[0.055] p-5 shadow-2xl shadow-black/20"
+              initial={reducedMotion ? false : { opacity: 0, y: 18 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, amount: 0.18 }}
+              transition={{ duration: reducedMotion ? 0.01 : MOTION.durations.reveal, delay: reducedMotion ? 0 : groupIndex * MOTION.stagger, ease: MOTION.ease }}
+            >
               <div className="flex items-center justify-between gap-4">
                 <h3 className="text-lg font-black text-[#f5efe4]">{title}</h3>
                 <Icon size={22} className="shrink-0 text-amber-300" aria-hidden="true" />
               </div>
               <ul className="mt-6 flex flex-wrap gap-2" aria-label={`${title} skills`}>
-                {items.map(({ label, icon: SkillIcon, color }) => (
-                  <li key={label} className="inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1.5 text-sm font-bold text-[#d7dfd8]">
+                {items.map(({ label, icon: SkillIcon, color }, itemIndex) => (
+                  <motion.li key={label} className="skill-chip inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1.5 text-sm font-bold text-[#d7dfd8]" initial={reducedMotion ? false : { opacity: 0, y: 8 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: reducedMotion ? 0.01 : 0.3, delay: reducedMotion ? 0 : groupIndex * MOTION.stagger + itemIndex * 0.025, ease: MOTION.ease }}>
                     <SkillIcon size={15} className="shrink-0" style={{ color }} data-skill-icon={label} aria-hidden="true" />
                     {label}
-                  </li>
+                  </motion.li>
                 ))}
               </ul>
-            </article>
+            </motion.article>
           ))}
         </div>
 
         <div className="mt-8 grid gap-4 lg:grid-cols-[0.72fr_1.28fr]">
-          <div className="rounded-lg border border-amber-300/25 bg-amber-300/[0.08] p-5 shadow-2xl shadow-black/20">
+          <Reveal className="h-full">
+          <div className="skill-group h-full rounded-lg border border-amber-300/25 bg-amber-300/[0.08] p-5 shadow-2xl shadow-black/20">
             <div className="flex items-center gap-3">
               <span className="grid size-10 place-items-center rounded-full border border-amber-300/35 bg-amber-300/10 text-amber-300">
                 <Award size={20} aria-hidden="true" />
@@ -732,12 +904,14 @@ function Skills() {
               </div>
             </div>
           </div>
+          </Reveal>
 
           <div className="grid gap-4 md:grid-cols-2">
             {certificationGroups.map((group) => {
               const isCertified = group.status === "Certified";
               return (
-              <article key={group.status} className="rounded-lg border border-white/10 bg-white/[0.055] p-5 shadow-2xl shadow-black/20">
+              <Reveal key={group.status} delay={isCertified ? MOTION.stagger : MOTION.stagger * 2} className="h-full">
+              <article className="skill-group h-full rounded-lg border border-white/10 bg-white/[0.055] p-5 shadow-2xl shadow-black/20">
                 <h3 className="text-sm font-black uppercase text-cyan-300">{group.status}</h3>
                 <ul className="mt-4 grid gap-3" aria-label={`${group.status} certifications`}>
                   {group.items.map((item) => (
@@ -754,6 +928,7 @@ function Skills() {
                   ))}
                 </ul>
               </article>
+              </Reveal>
               );
             })}
           </div>
@@ -766,16 +941,21 @@ function Skills() {
 function BlogCard({ post, variant = "carousel", onScrollLeft, onScrollRight, canScrollLeft = false, canScrollRight = false }) {
   const isCarousel = variant === "carousel";
   const showCarouselControls = isCarousel && (canScrollLeft || canScrollRight);
+  const reducedMotion = useReducedMotion();
 
   return (
-    <article
+    <motion.article
       data-carousel-card={isCarousel ? true : undefined}
-      className={`group overflow-hidden rounded-lg border border-white/10 bg-white/[0.055] shadow-2xl shadow-black/20 transition hover:-translate-y-1 hover:border-amber-300/40 ${
+      className={`group blog-card overflow-hidden rounded-lg border border-white/10 bg-white/[0.055] shadow-2xl shadow-black/20 transition hover:-translate-y-1 hover:border-amber-300/40 ${
         isCarousel ? "w-full shrink-0 snap-start" : "h-full"
       }`}
+      initial={reducedMotion ? false : { opacity: 0, y: 16 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, amount: 0.16 }}
+      transition={{ duration: reducedMotion ? 0.01 : MOTION.durations.reveal, ease: MOTION.ease }}
     >
       {post.image || isCarousel ? (
-        <div className="relative aspect-[16/9] overflow-hidden border-b border-white/10 bg-[#0f1211]">
+        <div className="blog-card__media relative aspect-[16/9] overflow-hidden border-b border-white/10 bg-[#0f1211]">
           {post.image ? (
             <img src={post.image} alt={`${post.title} architecture guide`} className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03] group-focus-within:scale-[1.03]" />
           ) : (
@@ -836,7 +1016,7 @@ function BlogCard({ post, variant = "carousel", onScrollLeft, onScrollRight, can
         </div>
         <p className="mt-4 max-w-3xl leading-8 text-[#b6c1ba]">{post.summary}</p>
       </div>
-    </article>
+    </motion.article>
   );
 }
 
@@ -886,21 +1066,23 @@ function Blog() {
 }
 
 function Process() {
+  const processRef = useRef(null);
+  const reducedMotion = useReducedMotion();
+  const { scrollYProgress } = useScroll({ target: processRef, offset: ["start 0.82", "end 0.32"] });
+  const lineScale = useSpring(useTransform(scrollYProgress, [0, 1], [0, 1]), { stiffness: 120, damping: 24 });
+
   return (
-    <section id="process" className="border-t border-white/10 bg-[#0f1211] px-4 py-20 md:px-8 md:py-28">
+    <section ref={processRef} id="process" className="relative isolate overflow-hidden border-t border-white/10 bg-[#0f1211] px-4 py-20 md:px-8 md:py-28">
       <div className="mx-auto max-w-7xl">
         <SectionHeading eyebrow="Process" title="How I Work" />
 
-        <div className="mt-10 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {processSteps.map(([step, title, body]) => (
-            <article key={step} className="relative min-h-80 overflow-hidden rounded-lg border border-white/10 bg-white/[0.055] p-6 shadow-2xl shadow-black/20">
-              <span className="text-xs font-black uppercase text-cyan-300">{step}</span>
-              <h3 className="mt-8 text-xl font-black leading-tight text-[#f5efe4]">{title}</h3>
-              <p className="mt-4 leading-7 text-[#b6c1ba]">{body}</p>
-              <span className="absolute bottom-2 right-4 text-7xl font-black leading-none text-white/[0.055]" aria-hidden="true">
-                {step}
-              </span>
-            </article>
+        <div className="process-path" aria-hidden="true">
+          <div className="process-path__track" />
+          <motion.div className="process-path__progress" style={{ scaleY: reducedMotion ? 1 : lineScale }} />
+        </div>
+        <div className="relative z-10 mt-10 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {processSteps.map(([step, title, body], index) => (
+            <ProcessStep key={step} step={step} title={title} body={body} index={index} />
           ))}
         </div>
       </div>
@@ -908,9 +1090,36 @@ function Process() {
   );
 }
 
+function ProcessStep({ step, title, body, index }) {
+  const reducedMotion = useReducedMotion();
+  const ref = useRef(null);
+  const active = useInView(ref, { once: true, amount: 0.35 });
+
+  return (
+    <motion.article
+      ref={ref}
+      data-process-step={step}
+      data-process-active={active ? "true" : "false"}
+      className="process-step relative min-h-80 overflow-hidden rounded-lg border border-white/10 bg-white/[0.055] p-6 shadow-2xl shadow-black/20"
+      initial={reducedMotion ? false : { opacity: 0, y: 22 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, amount: 0.2 }}
+      transition={{ duration: reducedMotion ? 0.01 : MOTION.durations.reveal, delay: reducedMotion ? 0 : index * MOTION.stagger, ease: MOTION.ease }}
+    >
+              <span className="text-xs font-black uppercase text-cyan-300">{step}</span>
+              <h3 className="mt-8 text-xl font-black leading-tight text-[#f5efe4]">{title}</h3>
+              <p className="mt-4 leading-7 text-[#b6c1ba]">{body}</p>
+              <span className="absolute bottom-2 right-4 text-7xl font-black leading-none text-white/[0.055]" aria-hidden="true">
+                {step}
+              </span>
+    </motion.article>
+  );
+}
+
 function Contact() {
   const [copied, setCopied] = useState(false);
   const { email } = profile;
+  const reducedMotion = useReducedMotion();
 
   const copyEmail = async () => {
     try {
@@ -923,13 +1132,15 @@ function Contact() {
   };
 
   return (
-    <section id="contact" className="border-t border-white/10 bg-[linear-gradient(135deg,rgba(242,184,75,0.12),transparent_32%),linear-gradient(315deg,rgba(239,113,94,0.10),transparent_34%),#121614] px-4 py-20 md:px-8 md:py-28">
+    <section id="contact" className="contact-section border-t border-white/10 bg-[linear-gradient(135deg,rgba(242,184,75,0.12),transparent_32%),linear-gradient(315deg,rgba(239,113,94,0.10),transparent_34%),#121614] px-4 py-20 md:px-8 md:py-28">
       <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.85fr_1.15fr]">
-        <SectionHeading eyebrow="Contact" title="Need a DevOps engineer who can make delivery calmer?">
-          <p>Send a note about your platform, cloud, automation, or reliability work. I will reply with the next useful step.</p>
-        </SectionHeading>
+        <Reveal>
+          <SectionHeading eyebrow="Contact" title="Need a DevOps engineer who can make delivery calmer?">
+            <p>Send a note about your platform, cloud, automation, or reliability work. I will reply with the next useful step.</p>
+          </SectionHeading>
+        </Reveal>
 
-        <div className="rounded-lg border border-white/10 bg-white/[0.055] p-6 shadow-2xl shadow-black/25">
+        <motion.div className="contact-panel rounded-lg border border-white/10 bg-white/[0.055] p-6 shadow-2xl shadow-black/25" initial={reducedMotion ? false : { opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.2 }} transition={{ duration: reducedMotion ? 0.01 : MOTION.durations.reveal, delay: reducedMotion ? 0 : MOTION.stagger, ease: MOTION.ease }}>
           <a href={`mailto:${email}`} className="block border-b border-white/10 pb-6 text-3xl font-black leading-tight text-[#f5efe4] transition hover:text-cyan-200 md:text-5xl">
             {email}
           </a>
@@ -948,7 +1159,7 @@ function Contact() {
               <ExternalLink size={18} aria-hidden="true" /> LinkedIn
             </a>
           </div>
-        </div>
+        </motion.div>
       </div>
     </section>
   );
@@ -996,26 +1207,59 @@ function ListingPage({ type }) {
 
 function App() {
   const normalizedPath = window.location.pathname.replace(/\/$/, "") || "/";
-  const page = normalizedPath === "/projects" || normalizedPath === "/blogs" ? normalizedPath.slice(1) : "home";
+  const [page, setPage] = useState(normalizedPath === "/projects" || normalizedPath === "/blogs" ? normalizedPath.slice(1) : "home");
+  const [isTransitioning, setTransitioning] = useState(false);
+  const scrollPositions = useRef({});
+  const { isVisible: isLoaderVisible, prefersReducedMotion } = useInitialLoader();
+  const isPageVisible = usePageVisibility();
+  const isMobile = useMediaQuery("(max-width: 767px)");
+
+  usePortfolioNavigation(setPage, setTransitioning, scrollPositions);
+  useRouteScroll(page, scrollPositions);
 
   return (
     <div className="min-h-screen bg-[#0f1211] text-[#f5efe4] selection:bg-cyan-300/30">
+      <AnimatePresence>{isLoaderVisible ? <Loader reducedMotion={prefersReducedMotion} /> : null}</AnimatePresence>
+      <GlobalBackground reducedMotion={prefersReducedMotion} isMobile={isMobile} />
       <a href="#content" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[60] focus:rounded-lg focus:border focus:border-cyan-300 focus:bg-[#0f1211] focus:px-4 focus:py-3">
         Skip to content
       </a>
       <Header />
-      {page === "home" ? (
-        <main id="content">
-          <Hero />
-          <Work />
-          <Skills />
-          <Blog />
-          <Process />
-          <Contact />
-        </main>
-      ) : (
-        <ListingPage type={page} />
-      )}
+      <AnimatePresence mode="wait" initial={false} onExitComplete={() => setTransitioning(false)}>
+        <motion.div
+          key={page}
+          className="portfolio-route"
+          initial={{ opacity: 0, y: 18, scale: 0.992 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: -14, scale: 0.988 }}
+          transition={{ duration: prefersReducedMotion ? 0.01 : MOTION.durations.route, ease: MOTION.routeEase }}
+        >
+          {page === "home" ? (
+            <main id="content">
+              <Hero isReady={!isLoaderVisible} reducedMotion={prefersReducedMotion} />
+              <Work />
+              <Skills />
+              <Blog />
+              <Process />
+              <Contact />
+            </main>
+          ) : (
+            <ListingPage type={page} />
+          )}
+        </motion.div>
+      </AnimatePresence>
+      <AnimatePresence>
+        {isTransitioning ? (
+          <motion.div
+            className="route-mask"
+            initial={{ opacity: 0, x: "-100%" }}
+            animate={{ opacity: 1, x: "0%" }}
+            exit={{ opacity: 0, x: "100%" }}
+            transition={{ duration: prefersReducedMotion ? 0.01 : MOTION.durations.route * 0.72, ease: MOTION.routeEase }}
+            aria-hidden="true"
+          />
+        ) : null}
+      </AnimatePresence>
       <footer className="border-t border-white/10 bg-[#0b0e0d] px-4 py-8 text-[#b6c1ba] md:px-8">
         <div className="mx-auto max-w-7xl">
           <p>&copy; {new Date().getFullYear()} {profile.name}.</p>

@@ -5,60 +5,24 @@ const projects = JSON.parse(readFileSync(new URL("../src/content/projects.json",
 const blogPosts = JSON.parse(readFileSync(new URL("../src/content/blogs.json", import.meta.url), "utf8"));
 const certificationGroups = JSON.parse(readFileSync(new URL("../src/content/certifications.json", import.meta.url), "utf8"));
 
-async function canvasSignal(page) {
-  await page.waitForSelector(".canvas-probe canvas", { state: "visible" });
-  await page.waitForTimeout(1200);
-
-  return page.locator(".canvas-probe canvas").evaluate((canvas) => {
-    const canvasRect = canvas.getBoundingClientRect();
-    const frameRect = canvas.closest("[data-canvas-frame]")?.getBoundingClientRect();
-    const gl = canvas.getContext("webgl2") || canvas.getContext("webgl");
-
-    if (!gl) {
-      return {
-        width: canvasRect.width,
-        height: canvasRect.height,
-        frameWidth: frameRect?.width ?? 0,
-        frameHeight: frameRect?.height ?? 0,
-        litPixels: 0,
-      };
-    }
-
-    gl.finish();
-
-    const width = gl.drawingBufferWidth;
-    const height = gl.drawingBufferHeight;
-    const data = new Uint8Array(width * height * 4);
-    gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, data);
-
-    let litPixels = 0;
-
-    for (let index = 0; index < data.length; index += 16) {
-      const red = data[index];
-      const green = data[index + 1];
-      const blue = data[index + 2];
-      const alpha = data[index + 3];
-      const brightness = red + green + blue;
-
-      if (alpha > 12 && brightness > 40) {
-        litPixels += 1;
-      }
-    }
-
-    return {
-      width: canvasRect.width,
-      height: canvasRect.height,
-      frameWidth: frameRect?.width ?? 0,
-      frameHeight: frameRect?.height ?? 0,
-      litPixels,
-    };
-  });
-}
-
 test("portfolio renders hero, sections, and active contact path", async ({ page }, testInfo) => {
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: /Awais Mansha builds resilient delivery platforms/i })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /BUILD WITH PURPOSE/i })).toBeVisible();
   await expect(page.getByRole("link", { name: /View Projects/i })).toBeVisible();
+  const workTogether = page.getByRole("link", { name: /LET'S WORK TOGETHER/i });
+  await expect(workTogether).toHaveAttribute("href", "/#contact");
+  await expect(workTogether).toHaveClass(/hero-contact-nav/);
+  await expect(page.getByRole("link", { name: /Email Awais/i })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /Download CV.*CV coming soon/i })).toBeDisabled();
+  await expect(page.locator(".hero-section__image")).toHaveAttribute("src", "/assets/awais-hero-portrait.png");
+  await expect(page.getByText("Devops engineer, cloud security and platform engineering", { exact: true })).toBeVisible();
+  await expect(page.getByText("I’m Awais Mansha — a DevOps and Cloud Engineer focused on reusable infrastructure, secure cloud platforms, and automated delivery systems built to evolve.", { exact: true })).toBeVisible();
+  const rotatingWord = page.locator(".hero-rotating-word__value");
+  await expect(rotatingWord).toHaveText("PURPOSE");
+  await page.waitForTimeout(3000);
+  await expect(rotatingWord).toHaveText("IMPACT");
+  await page.waitForTimeout(3000);
+  await expect(rotatingWord).toHaveText("INTENT");
   await expect(page.locator("header img")).toBeVisible();
   await expect(page.getByAltText("Awais Mansha, DevOps Engineer")).toHaveCount(0);
   await expect(page.getByRole("heading", { name: /DevOps projects built around cloud/i })).toHaveCount(0);
@@ -162,12 +126,12 @@ test("portfolio renders hero, sections, and active contact path", async ({ page 
     fullPage: true,
   });
 
-  const signal = await canvasSignal(page);
-  expect(signal.width).toBeGreaterThanOrEqual(300);
-  expect(signal.height).toBeGreaterThan(400);
-  expect(signal.frameWidth).toBeGreaterThanOrEqual(300);
-  expect(signal.frameHeight).toBeGreaterThan(400);
-  expect(signal.litPixels).toBeGreaterThan(250);
+  const heroImage = page.locator(".hero-section__image");
+  await expect(heroImage).toBeVisible();
+  await expect(heroImage).toHaveAttribute("src", "/assets/awais-hero-portrait.png");
+  const heroImageSize = await heroImage.evaluate((image) => ({ width: image.naturalWidth, height: image.naturalHeight }));
+  expect(heroImageSize.width).toBeGreaterThanOrEqual(2000);
+  expect(heroImageSize.height).toBeGreaterThanOrEqual(1500);
 });
 
 test("portfolio renders full project and blog pages at real URLs", async ({ page }) => {
@@ -191,4 +155,65 @@ test("portfolio renders full project and blog pages at real URLs", async ({ page
   await expect(page.locator("#content article h3").first()).toHaveText(blogPosts[0].title);
   await expect(page.getByTestId("blog-carousel-controls")).toHaveCount(0);
   await expect(page.getByRole("link", { name: /Back to homepage/i })).toHaveAttribute("href", "/#blog");
+});
+
+test("first-load loader persists across client-side internal navigation", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.getByRole("status", { name: "Loading portfolio" })).toBeVisible();
+  await expect(page.getByRole("status", { name: "Loading portfolio" })).toBeHidden({ timeout: 3000 });
+
+  await page.getByRole("link", { name: /View All Projects/i }).click();
+  await expect(page).toHaveURL(/\/projects$/);
+  await expect(page.getByRole("heading", { name: "All DevOps projects" })).toBeVisible();
+  await expect(page.getByRole("status", { name: "Loading portfolio" })).toHaveCount(0);
+
+  await page.getByRole("link", { name: /Back to homepage/i }).click();
+  await expect(page).toHaveURL(/\/#work$/);
+  await expect(page.getByRole("heading", { name: /BUILD WITH PURPOSE/i })).toBeVisible();
+  await expect(page.getByRole("status", { name: "Loading portfolio" })).toHaveCount(0);
+
+  await page.goBack();
+  await expect(page).toHaveURL(/\/projects$/);
+  await page.goForward();
+  await expect(page).toHaveURL(/\/#work$/);
+});
+
+test("reduced motion uses the simple loader and route fallback", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/");
+  await expect(page.getByRole("heading", { name: /BUILD WITH PURPOSE/i })).toBeVisible();
+  await expect(page.getByRole("status", { name: "Loading portfolio" })).toBeHidden({ timeout: 1000 });
+
+  await page.getByRole("link", { name: /View All Blogs/i }).click();
+  await expect(page).toHaveURL(/\/blogs$/);
+  await expect(page.getByRole("heading", { name: "All technical writing" })).toBeVisible();
+  await page.goBack();
+  await expect(page).toHaveURL(/\/$/);
+});
+
+test("remaining sections expose progressive animation states without blocking content", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.getByRole("heading", { name: /BUILD WITH PURPOSE/i })).toBeVisible();
+
+  const background = page.locator(".global-background");
+  await expect(background).toHaveCSS("pointer-events", "none");
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(await page.evaluate(() => window.innerWidth));
+
+  const progress = page.getByRole("progressbar", { name: "Project carousel progress" });
+  await expect(progress).toBeVisible();
+  const carousel = page.getByTestId("project-carousel");
+  await carousel.evaluate((element) => {
+    element.scrollLeft = element.scrollWidth;
+    element.dispatchEvent(new Event("scroll", { bubbles: true }));
+  });
+  await expect(progress).toHaveAttribute("aria-valuenow", /[1-9][0-9]?|100/);
+  await expect(page.locator("#work article[data-card-focus='true']")).toHaveCount(1);
+
+  await page.locator("#process").scrollIntoViewIfNeeded();
+  await expect(page.locator("[data-process-active='true']").first()).toBeVisible();
+  await expect(page.locator(".process-path__progress")).toBeVisible();
+
+  await page.locator("#skills").scrollIntoViewIfNeeded();
+  await expect(page.locator("#skills .skill-group").first()).toBeVisible();
+  await expect(page.locator("[data-skill-icon]")).toHaveCount(17);
 });
