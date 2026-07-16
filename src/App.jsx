@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useInView, useMotionValue, useReducedMotion, useScroll, useSpring, useTransform } from "motion/react";
 import { FaAws } from "react-icons/fa";
 import {
@@ -104,12 +104,25 @@ const skillGroups = [
 ];
 
 const HOMEPAGE_PREVIEW_COUNT = 3;
+const HERO_WORDS = ["PURPOSE", "IMPACT", "INTENT"];
+const GLITCH_CHARS = ".,-_~+:;=*<>[]{}!?&#$@0123456789";
+const TRANSITION_PATHS = [
+  "M227.549 1818.76C227.549 1818.76 406.016 2207.75 569.049 2130.26C843.431 1999.85 -264.104 1002.3 227.549 876.262C552.918 792.849 773.647 2456.11 1342.05 2130.26C1885.43 1818.76 14.9644 455.772 760.548 137.262C1342.05 -111.152 1663.5 2266.35 2209.55 1972.76C2755.6 1679.18 1536.63 384.467 1826.55 137.262C2013.5 -22.1463 2209.55 381.262 2209.55 381.262",
+  "M1661.28 2255.51C1661.28 2255.51 2311.09 1960.37 2111.78 1817.01C1944.47 1696.67 718.456 2870.17 499.781 2255.51C308.969 1719.17 2457.51 1613.83 2111.78 963.512C1766.05 313.198 427.949 2195.17 132.281 1455.51C-155.219 736.292 2014.78 891.514 1708.78 252.012C1437.81 -314.29 369.471 909.169 132.281 566.512C18.1772 401.672 244.781 193.012 244.781 193.012",
+];
+
+const WAVE_THRESH = 3;
+const CHAR_MULT = 3;
+const ANIM_STEP = 40;
+const WAVE_BUF = 5;
 
 const MOTION = {
   durations: {
     fast: 0.22,
-    route: 0.46,
-    loader: 0.9,
+    route: 0.36,
+    routeCover: 0.82,
+    routeReveal: 0.82,
+    loader: 1.8,
     reducedLoader: 0.18,
     reveal: 0.52,
   },
@@ -122,6 +135,10 @@ const MOTION = {
 };
 
 const INTERNAL_PATHS = new Set(["/", "/projects", "/blogs"]);
+
+function getPageFromPathname(pathname) {
+  return INTERNAL_PATHS.has(pathname) && pathname !== "/" ? pathname.slice(1) : "home";
+}
 
 function useInitialLoader() {
   const prefersReducedMotion = useReducedMotion();
@@ -146,35 +163,19 @@ function useInitialLoader() {
   return { isVisible, prefersReducedMotion };
 }
 
-function usePortfolioNavigation(setPage, setTransitioning, scrollPositions) {
+function usePortfolioNavigation(onNavigate) {
   useEffect(() => {
-    const navigate = (href, replace = false) => {
-      const url = new URL(href, window.location.origin);
-      if (url.origin !== window.location.origin || !INTERNAL_PATHS.has(url.pathname)) return false;
-
-      const nextUrl = `${url.pathname}${url.search}${url.hash}`;
-      if (nextUrl === `${window.location.pathname}${window.location.search}${window.location.hash}`) return true;
-
-      scrollPositions.current[window.location.pathname] = window.scrollY;
-      if (replace) window.history.replaceState({}, "", nextUrl);
-      else window.history.pushState({}, "", nextUrl);
-      setTransitioning(true);
-      setPage(url.pathname === "/" ? "home" : url.pathname.slice(1));
-      return true;
-    };
-
     const onClick = (event) => {
       if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
       const link = event.target.closest("a");
       if (!link || link.target === "_blank" || link.hasAttribute("download")) return;
       const href = link.getAttribute("href");
       if (!href || href.startsWith("#") || href.startsWith("mailto:") || href.startsWith("tel:")) return;
-      if (navigate(href)) event.preventDefault();
+      if (onNavigate(href)) event.preventDefault();
     };
 
     const onPopState = () => {
-      setTransitioning(true);
-      setPage(INTERNAL_PATHS.has(window.location.pathname) && window.location.pathname !== "/" ? window.location.pathname.slice(1) : "home");
+      onNavigate(window.location.href, { isPop: true });
     };
 
     document.addEventListener("click", onClick);
@@ -183,7 +184,7 @@ function usePortfolioNavigation(setPage, setTransitioning, scrollPositions) {
       document.removeEventListener("click", onClick);
       window.removeEventListener("popstate", onPopState);
     };
-  }, [scrollPositions, setPage, setTransitioning]);
+  }, [onNavigate]);
 }
 
 function useRouteScroll(page, scrollPositions) {
@@ -203,37 +204,71 @@ function useRouteScroll(page, scrollPositions) {
 }
 
 function Loader({ reducedMotion }) {
+  const hundreds = ["0", "1"];
+  const tens = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0"];
+  const ones = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0"];
+
   return (
     <motion.div
-      className="portfolio-loader"
+      className={`portfolio-loader ${reducedMotion ? "portfolio-loader--reduced" : ""}`}
       initial={{ opacity: 1 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      transition={{ duration: reducedMotion ? 0.01 : 0.24, ease: MOTION.ease }}
+      transition={{ duration: reducedMotion ? 0.01 : 0.28, ease: MOTION.ease }}
       aria-label="Loading portfolio"
       role="status"
     >
-      <div className="portfolio-loader__system" aria-hidden="true">
-        {[0, 1, 2, 3].map((block) => (
-          <motion.span
-            key={block}
-            className="portfolio-loader__block"
-            initial={reducedMotion ? false : { opacity: 0, scale: 0.35, x: (block % 2 ? 1 : -1) * 28, y: block < 2 ? -28 : 28 }}
-            animate={{ opacity: 1, scale: 1, x: 0, y: 0 }}
-            transition={{ duration: reducedMotion ? 0.01 : 0.42, delay: reducedMotion ? 0 : block * MOTION.stagger, ease: MOTION.ease }}
+      <div className="portfolio-loader__bars" aria-hidden="true">
+        <span className="portfolio-loader__bar portfolio-loader__bar--one" />
+        <span className="portfolio-loader__bar portfolio-loader__bar--two" />
+      </div>
+      <div className="portfolio-loader__counter" aria-hidden="true">
+        <span className="portfolio-loader__digit portfolio-loader__digit--hundreds">
+          {hundreds.map((num, index) => <span key={`${num}-${index}`}>{num}</span>)}
+        </span>
+        <span className="portfolio-loader__digit portfolio-loader__digit--tens">
+          {tens.map((num, index) => <span key={`${num}-${index}`}>{num}</span>)}
+        </span>
+        <span className="portfolio-loader__digit portfolio-loader__digit--ones">
+          {ones.map((num, index) => <span key={`${num}-${index}`}>{num}</span>)}
+        </span>
+      </div>
+      <p className="portfolio-loader__name">Awais Mansha</p>
+      <span className="portfolio-loader__label">DevOps Engineer</span>
+    </motion.div>
+  );
+}
+
+function SvgRouteTransition({ phase }) {
+  return (
+    <motion.div
+      className={`route-svg-transition route-svg-transition--${phase}`}
+      initial={{ opacity: 1 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.16, ease: MOTION.ease }}
+      aria-hidden="true"
+    >
+      <svg viewBox="0 0 2453 2535" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+        {TRANSITION_PATHS.map((path, index) => (
+          <motion.path
+            key={path}
+            d={path}
+            stroke={`var(--route-transition-stroke-${index + 1})`}
+            strokeLinecap="round"
+            initial={{ pathLength: 0, pathOffset: 0, strokeWidth: 200 }}
+            animate={
+              phase === "cover"
+                ? { pathLength: 1, pathOffset: 0, strokeWidth: 720 }
+                : { pathLength: 1, pathOffset: 1.08, strokeWidth: 200 }
+            }
+            transition={{
+              duration: phase === "cover" ? MOTION.durations.routeCover : MOTION.durations.routeReveal,
+              ease: "easeInOut",
+            }}
           />
         ))}
-        <span className="portfolio-loader__cross" />
-      </div>
-      <motion.p
-        className="portfolio-loader__name"
-        initial={reducedMotion ? false : { opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: reducedMotion ? 0.01 : 0.34, delay: reducedMotion ? 0 : 0.35, ease: MOTION.ease }}
-      >
-        Awais Mansha
-      </motion.p>
-      <span className="portfolio-loader__label">DevOps Engineer</span>
+      </svg>
     </motion.div>
   );
 }
@@ -319,33 +354,225 @@ function GlobalBackground({ reducedMotion, isMobile }) {
   );
 }
 
+function AsciiGlitchRipple({
+  children,
+  as: Component = "span",
+  className = "",
+  dur = 850,
+  chars = GLITCH_CHARS,
+  preserveSpaces = true,
+  spread = 1,
+  reducedMotion = false,
+  ...props
+}) {
+  const elRef = useRef(null);
+  const stateRef = useRef({
+    origTxt: children,
+    origChars: children.split(""),
+    isAnim: false,
+    cursorPos: 0,
+    waves: [],
+    animId: null,
+    isHover: false,
+    origW: null,
+    dur,
+    chars,
+    preserveSpaces,
+    spread,
+  });
+
+  useEffect(() => {
+    stateRef.current.origTxt = children;
+    stateRef.current.origChars = children.split("");
+    stateRef.current.dur = dur;
+    stateRef.current.chars = chars;
+    stateRef.current.preserveSpaces = preserveSpaces;
+    stateRef.current.spread = spread;
+
+    if (stateRef.current.origW !== null && elRef.current) {
+      elRef.current.style.width = "";
+      stateRef.current.origW = null;
+    }
+
+    if (!stateRef.current.isAnim && elRef.current) {
+      elRef.current.textContent = children;
+    }
+  }, [children, dur, chars, preserveSpaces, spread]);
+
+  useEffect(() => {
+    const el = elRef.current;
+    if (!el) return undefined;
+
+    el.textContent = children;
+    if (reducedMotion) return undefined;
+
+    let initialWave = null;
+
+    const updateCursorPos = (event) => {
+      const rect = el.getBoundingClientRect();
+      const len = stateRef.current.origTxt.length;
+      const x = event.clientX - rect.left;
+      const pos = Math.round((x / rect.width) * len);
+      stateRef.current.cursorPos = Math.max(0, Math.min(pos, len - 1));
+    };
+
+    const stop = () => {
+      el.textContent = stateRef.current.origTxt;
+      el.classList.remove("as");
+      stateRef.current.waves = [];
+
+      if (stateRef.current.origW !== null) {
+        el.style.width = "";
+        stateRef.current.origW = null;
+      }
+
+      stateRef.current.isAnim = false;
+      if (stateRef.current.animId) {
+        window.cancelAnimationFrame(stateRef.current.animId);
+        stateRef.current.animId = null;
+      }
+    };
+
+    const calcWaveEffect = (charIdx, time) => {
+      let shouldAnim = false;
+      let resultChar = stateRef.current.origChars[charIdx];
+
+      for (const wave of stateRef.current.waves) {
+        const age = time - wave.startTime;
+        const progress = Math.min(age / stateRef.current.dur, 1);
+        const dist = Math.abs(charIdx - wave.startPos);
+        const maxDist = Math.max(wave.startPos, stateRef.current.origChars.length - wave.startPos - 1);
+        const radius = (progress * (maxDist + WAVE_BUF)) / stateRef.current.spread;
+
+        if (dist <= radius) {
+          shouldAnim = true;
+          const intensity = Math.max(0, radius - dist);
+          if (intensity <= WAVE_THRESH && intensity > 0) {
+            const index = (dist * CHAR_MULT + Math.floor(age / ANIM_STEP)) % stateRef.current.chars.length;
+            resultChar = stateRef.current.chars[index];
+          }
+        }
+      }
+
+      return { shouldAnim, char: resultChar };
+    };
+
+    const genScrambledText = (time) =>
+      stateRef.current.origChars
+        .map((char, index) => {
+          if (stateRef.current.preserveSpaces && char === " ") return " ";
+          const result = calcWaveEffect(index, time);
+          return result.shouldAnim ? result.char : char;
+        })
+        .join("");
+
+    const start = () => {
+      if (stateRef.current.isAnim) return;
+
+      if (stateRef.current.origW === null) {
+        stateRef.current.origW = el.getBoundingClientRect().width;
+        el.style.width = `${stateRef.current.origW}px`;
+      }
+
+      stateRef.current.isAnim = true;
+      el.classList.add("as");
+
+      const animate = () => {
+        const time = Date.now();
+        stateRef.current.waves = stateRef.current.waves.filter((wave) => time - wave.startTime < stateRef.current.dur);
+
+        if (stateRef.current.waves.length === 0) {
+          stop();
+          return;
+        }
+
+        el.textContent = genScrambledText(time);
+        stateRef.current.animId = window.requestAnimationFrame(animate);
+      };
+
+      stateRef.current.animId = window.requestAnimationFrame(animate);
+    };
+
+    const startWave = (startPos = stateRef.current.cursorPos) => {
+      stateRef.current.waves.push({
+        startPos,
+        startTime: Date.now(),
+        id: Math.random(),
+      });
+
+      if (!stateRef.current.isAnim) start();
+    };
+
+    const handleEnter = (event) => {
+      stateRef.current.isHover = true;
+      updateCursorPos(event);
+      startWave();
+    };
+
+    const handleMove = (event) => {
+      if (!stateRef.current.isHover) return;
+      const oldPos = stateRef.current.cursorPos;
+      updateCursorPos(event);
+      if (stateRef.current.cursorPos !== oldPos) startWave();
+    };
+
+    const handleLeave = () => {
+      stateRef.current.isHover = false;
+    };
+
+    el.addEventListener("mouseenter", handleEnter);
+    el.addEventListener("mousemove", handleMove);
+    el.addEventListener("mouseleave", handleLeave);
+
+    initialWave = window.setTimeout(() => {
+      stateRef.current.cursorPos = Math.floor(stateRef.current.origChars.length / 2);
+      startWave(stateRef.current.cursorPos);
+    }, 30);
+
+    return () => {
+      if (initialWave) window.clearTimeout(initialWave);
+      el.removeEventListener("mouseenter", handleEnter);
+      el.removeEventListener("mousemove", handleMove);
+      el.removeEventListener("mouseleave", handleLeave);
+      if (stateRef.current.animId) {
+        window.cancelAnimationFrame(stateRef.current.animId);
+        stateRef.current.animId = null;
+      }
+      el.classList.remove("as");
+      el.style.width = "";
+      stateRef.current.origW = null;
+      stateRef.current.waves = [];
+      stateRef.current.isAnim = false;
+      stateRef.current.isHover = false;
+    };
+  }, [children, reducedMotion]);
+
+  return (
+    <Component ref={elRef} className={`ascii-glitch-ripple ${className}`.trim()} {...props}>
+      {children}
+    </Component>
+  );
+}
+
 function RotatingHeroWord({ reducedMotion }) {
-  const words = ["PURPOSE", "IMPACT", "INTENT"];
   const [wordIndex, setWordIndex] = useState(0);
 
   useEffect(() => {
     if (reducedMotion) return undefined;
     const interval = window.setInterval(() => {
-      setWordIndex((current) => (current + 1) % words.length);
-    }, 2800);
+      setWordIndex((current) => (current + 1) % HERO_WORDS.length);
+    }, 2000);
     return () => window.clearInterval(interval);
   }, [reducedMotion]);
 
+  const word = HERO_WORDS[wordIndex];
+
   return (
     <span className="hero-rotating-word" aria-live="polite">
-      <AnimatePresence mode="wait" initial={false}>
-        <motion.span
-          key={words[wordIndex]}
-          className="hero-section__accent hero-rotating-word__value"
-          initial={reducedMotion ? false : { opacity: 0, y: "70%", rotateX: -70 }}
-          animate={{ opacity: 1, y: "0%", rotateX: 0 }}
-          exit={reducedMotion ? undefined : { opacity: 0, y: "-70%", rotateX: 70 }}
-          transition={{ duration: reducedMotion ? 0.01 : 0.42, ease: MOTION.ease }}
-        >
-          {words[wordIndex]}
-        </motion.span>
-      </AnimatePresence>
-      <span className="sr-only">Purpose, Impact, Intent</span>
+      <AsciiGlitchRipple className="hero-section__accent hero-rotating-word__value" reducedMotion={reducedMotion} aria-hidden="true">
+        {word}
+      </AsciiGlitchRipple>
+      <span className="sr-only">{word}</span>
     </span>
   );
 }
@@ -626,7 +853,7 @@ function Hero({ isReady, reducedMotion }) {
       </div>
       <div className="hero-section__visual-glow" aria-hidden="true" />
 
-      <div className="relative z-10 mx-auto flex max-w-7xl items-center lg:min-h-[calc(92svh-8rem)]">
+      <div className="hero-section__layout relative z-10 mx-auto flex max-w-7xl items-center lg:min-h-[calc(92svh-8rem)]">
         <motion.div
           className="hero-section__content flex w-full max-w-7xl flex-col justify-between"
           initial={reducedMotion ? false : { opacity: 0, y: 22 }}
@@ -1208,13 +1435,106 @@ function ListingPage({ type }) {
 function App() {
   const normalizedPath = window.location.pathname.replace(/\/$/, "") || "/";
   const [page, setPage] = useState(normalizedPath === "/projects" || normalizedPath === "/blogs" ? normalizedPath.slice(1) : "home");
-  const [isTransitioning, setTransitioning] = useState(false);
+  const [routeTransition, setRouteTransition] = useState(null);
   const scrollPositions = useRef({});
+  const pageRef = useRef(page);
+  const routeInFlightRef = useRef(false);
+  const routeTimersRef = useRef([]);
   const { isVisible: isLoaderVisible, prefersReducedMotion } = useInitialLoader();
-  const isPageVisible = usePageVisibility();
   const isMobile = useMediaQuery("(max-width: 767px)");
 
-  usePortfolioNavigation(setPage, setTransitioning, scrollPositions);
+  useEffect(() => {
+    pageRef.current = page;
+  }, [page]);
+
+  const clearRouteTimers = useCallback(() => {
+    routeTimersRef.current.forEach((timer) => window.clearTimeout(timer));
+    routeTimersRef.current = [];
+  }, []);
+
+  useEffect(() => {
+    return () => clearRouteTimers();
+  }, [clearRouteTimers]);
+
+  const scrollSameRoute = useCallback((url, nextPage) => {
+    window.requestAnimationFrame(() => {
+      if (nextPage === "home" && url.hash) {
+        document.querySelector(url.hash)?.scrollIntoView({ block: "start" });
+      } else if (nextPage !== "home") {
+        window.scrollTo({ top: 0, behavior: "auto" });
+      }
+    });
+  }, []);
+
+  const navigateWithTransition = useCallback((href, options = {}) => {
+    const { replace = false, isPop = false } = options;
+    let url;
+
+    try {
+      url = new URL(href, window.location.origin);
+    } catch {
+      return false;
+    }
+
+    if (url.origin !== window.location.origin || !INTERNAL_PATHS.has(url.pathname)) return false;
+
+    const nextUrl = `${url.pathname}${url.search}${url.hash}`;
+    const currentBrowserUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+    const nextPage = getPageFromPathname(url.pathname);
+    const currentRenderedPage = pageRef.current;
+    const currentRenderedPath = currentRenderedPage === "home" ? "/" : `/${currentRenderedPage}`;
+
+    if (!isPop && nextUrl === currentBrowserUrl) return true;
+
+    if (nextPage === currentRenderedPage && url.pathname === currentRenderedPath) {
+      scrollPositions.current[window.location.pathname] = window.scrollY;
+      if (!isPop) {
+        if (replace) window.history.replaceState({}, "", nextUrl);
+        else window.history.pushState({}, "", nextUrl);
+      }
+      setPage(nextPage);
+      scrollSameRoute(url, nextPage);
+      return true;
+    }
+
+    if (routeInFlightRef.current) return true;
+
+    scrollPositions.current[window.location.pathname] = window.scrollY;
+
+    const applyRoute = () => {
+      if (!isPop) {
+        if (replace) window.history.replaceState({}, "", nextUrl);
+        else window.history.pushState({}, "", nextUrl);
+      }
+      setPage(nextPage);
+    };
+
+    if (prefersReducedMotion) {
+      applyRoute();
+      return true;
+    }
+
+    routeInFlightRef.current = true;
+    clearRouteTimers();
+    setRouteTransition({ phase: "cover" });
+
+    const coverTimer = window.setTimeout(() => {
+      applyRoute();
+      setRouteTransition({ phase: "reveal" });
+
+      const revealTimer = window.setTimeout(() => {
+        routeInFlightRef.current = false;
+        setRouteTransition(null);
+      }, MOTION.durations.routeReveal * 1000);
+
+      routeTimersRef.current.push(revealTimer);
+    }, MOTION.durations.routeCover * 1000);
+
+    routeTimersRef.current.push(coverTimer);
+    return true;
+  }, [clearRouteTimers, prefersReducedMotion, scrollSameRoute]);
+
+  usePortfolioNavigation(navigateWithTransition);
   useRouteScroll(page, scrollPositions);
 
   return (
@@ -1225,40 +1545,28 @@ function App() {
         Skip to content
       </a>
       <Header />
-      <AnimatePresence mode="wait" initial={false} onExitComplete={() => setTransitioning(false)}>
-        <motion.div
-          key={page}
-          className="portfolio-route"
-          initial={{ opacity: 0, y: 18, scale: 0.992 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: -14, scale: 0.988 }}
-          transition={{ duration: prefersReducedMotion ? 0.01 : MOTION.durations.route, ease: MOTION.routeEase }}
-        >
-          {page === "home" ? (
-            <main id="content">
-              <Hero isReady={!isLoaderVisible} reducedMotion={prefersReducedMotion} />
-              <Work />
-              <Skills />
-              <Blog />
-              <Process />
-              <Contact />
-            </main>
-          ) : (
-            <ListingPage type={page} />
-          )}
-        </motion.div>
-      </AnimatePresence>
+      <motion.div
+        key={page}
+        className="portfolio-route"
+        initial={prefersReducedMotion ? false : { opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: prefersReducedMotion ? 0.01 : MOTION.durations.route, ease: MOTION.ease }}
+      >
+        {page === "home" ? (
+          <main id="content">
+            <Hero isReady={!isLoaderVisible} reducedMotion={prefersReducedMotion} />
+            <Work />
+            <Skills />
+            <Blog />
+            <Process />
+            <Contact />
+          </main>
+        ) : (
+          <ListingPage type={page} />
+        )}
+      </motion.div>
       <AnimatePresence>
-        {isTransitioning ? (
-          <motion.div
-            className="route-mask"
-            initial={{ opacity: 0, x: "-100%" }}
-            animate={{ opacity: 1, x: "0%" }}
-            exit={{ opacity: 0, x: "100%" }}
-            transition={{ duration: prefersReducedMotion ? 0.01 : MOTION.durations.route * 0.72, ease: MOTION.routeEase }}
-            aria-hidden="true"
-          />
-        ) : null}
+        {routeTransition ? <SvgRouteTransition phase={routeTransition.phase} /> : null}
       </AnimatePresence>
       <footer className="border-t border-white/10 bg-[#0b0e0d] px-4 py-8 text-[#b6c1ba] md:px-8">
         <div className="mx-auto max-w-7xl">

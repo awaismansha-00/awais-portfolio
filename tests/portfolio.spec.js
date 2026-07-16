@@ -15,14 +15,36 @@ test("portfolio renders hero, sections, and active contact path", async ({ page 
   await expect(page.getByRole("link", { name: /Email Awais/i })).toHaveCount(0);
   await expect(page.getByRole("button", { name: /Download CV.*CV coming soon/i })).toBeDisabled();
   await expect(page.locator(".hero-section__image")).toHaveAttribute("src", "/assets/awais-hero-portrait.png");
+  await expect(page.locator(".hero-section__title")).toHaveCSS("font-family", /Archivo Black/i);
+  await expect(page.locator(".hero-section__description")).toHaveCSS("font-family", /Space Mono/i);
   await expect(page.getByText("Devops engineer, cloud security and platform engineering", { exact: true })).toBeVisible();
   await expect(page.getByText("I’m Awais Mansha — a DevOps and Cloud Engineer focused on reusable infrastructure, secure cloud platforms, and automated delivery systems built to evolve.", { exact: true })).toBeVisible();
   const rotatingWord = page.locator(".hero-rotating-word__value");
-  await expect(rotatingWord).toHaveText("PURPOSE");
-  await page.waitForTimeout(3000);
-  await expect(rotatingWord).toHaveText("IMPACT");
-  await page.waitForTimeout(3000);
-  await expect(rotatingWord).toHaveText("INTENT");
+  await expect(rotatingWord).toHaveClass(/ascii-glitch-ripple/);
+  await expect(page.locator(".hero-rotating-word--fading")).toHaveCount(0);
+  const readRotatingWord = () => rotatingWord.evaluate((word) => word.textContent);
+  await expect.poll(readRotatingWord, { timeout: 7000 }).toBe("PURPOSE");
+  await expect.poll(readRotatingWord, { timeout: 5000 }).toBe("IMPACT");
+  await expect.poll(readRotatingWord, { timeout: 5000 }).toBe("INTENT");
+  const wordWidth = await rotatingWord.evaluate((word) => word.getBoundingClientRect().width);
+  await rotatingWord.hover();
+  await expect(rotatingWord).toHaveClass(/as/);
+  const hoverWordWidth = await rotatingWord.evaluate((word) => word.getBoundingClientRect().width);
+  expect(Math.abs(hoverWordWidth - wordWidth)).toBeLessThanOrEqual(1);
+  const heroImage = page.locator(".hero-section__image");
+  await expect(heroImage).toHaveCSS("transition-duration", "0.4s");
+  await expect(heroImage).toHaveCSS("transition-timing-function", "ease-in-out");
+  if (!testInfo.project.name.includes("mobile")) {
+    await heroImage.hover();
+    const readScale = () => heroImage.evaluate((image) => {
+      const transform = getComputedStyle(image).transform;
+      if (transform === "none") return 1;
+      return Number.parseFloat(transform.match(/matrix\(([^,]+)/)?.[1] || "1");
+    });
+    await expect.poll(readScale).toBeGreaterThan(1.04);
+    await page.mouse.move(0, 0);
+    await expect.poll(readScale).toBeLessThan(1.01);
+  }
   await expect(page.locator("header img")).toBeVisible();
   await expect(page.getByAltText("Awais Mansha, DevOps Engineer")).toHaveCount(0);
   await expect(page.getByRole("heading", { name: /DevOps projects built around cloud/i })).toHaveCount(0);
@@ -126,7 +148,6 @@ test("portfolio renders hero, sections, and active contact path", async ({ page 
     fullPage: true,
   });
 
-  const heroImage = page.locator(".hero-section__image");
   await expect(heroImage).toBeVisible();
   await expect(heroImage).toHaveAttribute("src", "/assets/awais-hero-portrait.png");
   const heroImageSize = await heroImage.evaluate((image) => ({ width: image.naturalWidth, height: image.naturalHeight }));
@@ -160,11 +181,16 @@ test("portfolio renders full project and blog pages at real URLs", async ({ page
 test("first-load loader persists across client-side internal navigation", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByRole("status", { name: "Loading portfolio" })).toBeVisible();
+  await expect(page.locator(".portfolio-loader__counter")).toBeVisible();
+  await expect(page.locator(".portfolio-loader__bars")).toBeVisible();
   await expect(page.getByRole("status", { name: "Loading portfolio" })).toBeHidden({ timeout: 3000 });
 
   await page.getByRole("link", { name: /View All Projects/i }).click();
+  await expect(page.locator(".route-svg-transition")).toBeVisible();
   await expect(page).toHaveURL(/\/projects$/);
   await expect(page.getByRole("heading", { name: "All DevOps projects" })).toBeVisible();
+  await expect(page.locator(".route-svg-transition")).toHaveCount(0, { timeout: 3000 });
+  await expect(page.locator(".route-mask")).toHaveCount(0);
   await expect(page.getByRole("status", { name: "Loading portfolio" })).toHaveCount(0);
 
   await page.getByRole("link", { name: /Back to homepage/i }).click();
@@ -185,6 +211,7 @@ test("reduced motion uses the simple loader and route fallback", async ({ page }
   await expect(page.getByRole("status", { name: "Loading portfolio" })).toBeHidden({ timeout: 1000 });
 
   await page.getByRole("link", { name: /View All Blogs/i }).click();
+  await expect(page.locator(".route-svg-transition")).toHaveCount(0);
   await expect(page).toHaveURL(/\/blogs$/);
   await expect(page.getByRole("heading", { name: "All technical writing" })).toBeVisible();
   await page.goBack();
