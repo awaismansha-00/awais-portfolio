@@ -18,19 +18,14 @@ test("portfolio renders hero, sections, and active contact path", async ({ page 
   await expect(page.locator(".hero-section__title")).toHaveCSS("font-family", /Archivo Black/i);
   await expect(page.locator(".hero-section__description")).toHaveCSS("font-family", /Space Mono/i);
   await expect(page.getByText("Devops engineer, cloud security and platform engineering", { exact: true })).toBeVisible();
-  await expect(page.getByText("I’m Awais Mansha — a DevOps and Cloud Engineer focused on reusable infrastructure, secure cloud platforms, and automated delivery systems built to evolve.", { exact: true })).toBeVisible();
+  await expect(page.getByText("Based in the UK, I’m Awais Mansha — a DevOps and Cloud Engineer focused on reusable infrastructure, secure cloud platforms, and automated delivery systems built to evolve.", { exact: true })).toBeVisible();
   const rotatingWord = page.locator(".hero-rotating-word__value");
-  await expect(rotatingWord).toHaveClass(/ascii-glitch-ripple/);
-  await expect(page.locator(".hero-rotating-word--fading")).toHaveCount(0);
+  await expect(rotatingWord).toHaveClass(/hero-flip-word/);
+  await expect(rotatingWord.locator(".hero-flip-word__letter")).toHaveCount(6);
   const readRotatingWord = () => rotatingWord.evaluate((word) => word.textContent);
-  await expect.poll(readRotatingWord, { timeout: 7000 }).toBe("PURPOSE");
-  await expect.poll(readRotatingWord, { timeout: 5000 }).toBe("IMPACT");
-  await expect.poll(readRotatingWord, { timeout: 5000 }).toBe("INTENT");
-  const wordWidth = await rotatingWord.evaluate((word) => word.getBoundingClientRect().width);
-  await rotatingWord.hover();
-  await expect(rotatingWord).toHaveClass(/as/);
-  const hoverWordWidth = await rotatingWord.evaluate((word) => word.getBoundingClientRect().width);
-  expect(Math.abs(hoverWordWidth - wordWidth)).toBeLessThanOrEqual(1);
+  await expect.poll(readRotatingWord, { timeout: 12000 }).toBe("PURPOSE");
+  await expect.poll(readRotatingWord, { timeout: 7000 }).toBe("IMPACT");
+  await expect.poll(readRotatingWord, { timeout: 7000 }).toBe("INTENT");
   const heroImage = page.locator(".hero-section__image");
   await expect(heroImage).toHaveCSS("transition-duration", "0.4s");
   await expect(heroImage).toHaveCSS("transition-timing-function", "ease-in-out");
@@ -48,6 +43,7 @@ test("portfolio renders hero, sections, and active contact path", async ({ page 
   await expect(page.locator("header img")).toBeVisible();
   await expect(page.getByAltText("Awais Mansha, DevOps Engineer")).toHaveCount(0);
   await expect(page.getByRole("heading", { name: /DevOps projects built around cloud/i })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Selected Work" })).toBeVisible();
   await expect(page.locator("#work article")).toHaveCount(Math.min(projects.length, 3));
   await expect(page.getByRole("link", { name: /View All Projects/i })).toHaveAttribute("href", "/projects");
   await expect(page.locator("#work article h3").first()).toHaveText(projects[0].title);
@@ -109,6 +105,9 @@ test("portfolio renders hero, sections, and active contact path", async ({ page 
   await expect(page.locator("[data-certification-icon='certified']")).toHaveCount(certifiedItems.length);
   await expect(page.getByText(preparingItems[0].title)).toBeVisible();
   await expect(page.getByText(preparingItems[0].title).locator("xpath=ancestor::li[1]//img")).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Skills" })).toBeVisible();
+  await expect(page.getByText("Hands-on tools across cloud, delivery, and observability.")).toHaveCount(0);
+  await expect(page.getByText("A focused DevOps toolkit for building, shipping, monitoring, and operating production systems.")).toHaveCount(0);
   const blogCarousel = page.getByTestId("blog-carousel");
   const firstBlogCard = page.locator("#blog article").first();
   await expect(page.getByRole("heading", { name: /Writing in public about DevOps practice/i })).toHaveCount(0);
@@ -139,9 +138,12 @@ test("portfolio renders hero, sections, and active contact path", async ({ page 
     "href",
     blogPosts[0].href,
   );
-  await expect(page.getByRole("heading", { name: "How I Work" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Blog" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Process" })).toBeVisible();
   await expect(page.getByText("Professional Signal")).toHaveCount(0);
-  await expect(page.getByRole("heading", { name: /Need a DevOps engineer/i })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Contact" })).toBeVisible();
+  await expect(page.getByText(/Need a DevOps engineer who can make delivery calmer/i)).toBeVisible();
+  await expect(page.getByRole("link", { name: /^Medium$/i })).toHaveAttribute("href", "https://medium.com/@awaismansha97");
 
   await page.screenshot({
     path: testInfo.outputPath(`${testInfo.project.name}-portfolio.png`),
@@ -159,19 +161,25 @@ test("portfolio renders full project and blog pages at real URLs", async ({ page
   await page.goto("/");
   await page.getByRole("link", { name: /View All Projects/i }).click();
   await expect(page).toHaveURL(/\/projects$/);
-  await expect(page.getByRole("heading", { name: "All DevOps projects" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Projects" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "All DevOps projects" })).toHaveCount(0);
+  await expect(page.getByText("A fuller view of the infrastructure, Kubernetes, automation, and delivery systems behind the selected work.")).toHaveCount(0);
   await expect(page.locator("#content article")).toHaveCount(projects.length);
   await expect(page.locator("#content article h3").first()).toHaveText(projects[0].title);
   await expect(page.getByTestId("project-carousel-controls")).toHaveCount(0);
   await expect(page.getByRole("link", { name: /Back to homepage/i })).toHaveAttribute("href", "/#work");
 
   await page.goto("/projects");
-  await expect(page.getByRole("heading", { name: "All DevOps projects" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Projects" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "All DevOps projects" })).toHaveCount(0);
+  await expect(page.getByText("A fuller view of the infrastructure, Kubernetes, automation, and delivery systems behind the selected work.")).toHaveCount(0);
   await expect(page.locator("#content article")).toHaveCount(projects.length);
   await expect(page.getByTestId("project-carousel-controls")).toHaveCount(0);
 
   await page.goto("/blogs");
-  await expect(page.getByRole("heading", { name: "All technical writing" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Blogs" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "All technical writing" })).toHaveCount(0);
+  await expect(page.getByText("All published DevOps notes and walkthroughs, with each post linking to the full article on Medium.")).toHaveCount(0);
   await expect(page.locator("#content article")).toHaveCount(blogPosts.length);
   await expect(page.locator("#content article h3").first()).toHaveText(blogPosts[0].title);
   await expect(page.getByTestId("blog-carousel-controls")).toHaveCount(0);
@@ -188,7 +196,8 @@ test("first-load loader persists across client-side internal navigation", async 
   await page.getByRole("link", { name: /View All Projects/i }).click();
   await expect(page.locator(".route-svg-transition")).toBeVisible();
   await expect(page).toHaveURL(/\/projects$/);
-  await expect(page.getByRole("heading", { name: "All DevOps projects" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Projects" })).toBeVisible();
+  await expect.poll(() => page.evaluate(() => window.scrollY), { timeout: 3000 }).toBeLessThanOrEqual(2);
   await expect(page.locator(".route-svg-transition")).toHaveCount(0, { timeout: 3000 });
   await expect(page.locator(".route-mask")).toHaveCount(0);
   await expect(page.getByRole("status", { name: "Loading portfolio" })).toHaveCount(0);
@@ -213,7 +222,7 @@ test("reduced motion uses the simple loader and route fallback", async ({ page }
   await page.getByRole("link", { name: /View All Blogs/i }).click();
   await expect(page.locator(".route-svg-transition")).toHaveCount(0);
   await expect(page).toHaveURL(/\/blogs$/);
-  await expect(page.getByRole("heading", { name: "All technical writing" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Blogs" })).toBeVisible();
   await page.goBack();
   await expect(page).toHaveURL(/\/$/);
 });
@@ -238,7 +247,7 @@ test("remaining sections expose progressive animation states without blocking co
 
   await page.locator("#process").scrollIntoViewIfNeeded();
   await expect(page.locator("[data-process-active='true']").first()).toBeVisible();
-  await expect(page.locator(".process-path__progress")).toBeVisible();
+  await expect(page.locator(".process-path__progress")).toHaveCount(0);
 
   await page.locator("#skills").scrollIntoViewIfNeeded();
   await expect(page.locator("#skills .skill-group").first()).toBeVisible();

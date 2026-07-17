@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AnimatePresence, motion, useInView, useMotionValue, useReducedMotion, useScroll, useSpring, useTransform } from "motion/react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { AnimatePresence, motion, useInView, useMotionValue, useReducedMotion } from "motion/react";
 import { FaAws } from "react-icons/fa";
 import {
   SiArgo,
@@ -46,7 +46,7 @@ const profile = {
   email: "awaismansha97@gmail.com",
   github: "https://github.com/awaismansha-00",
   linkedin: "https://www.linkedin.com/in/awaismansha/",
-  medium: "https://medium.com/@awaismansha",
+  medium: "https://medium.com/@awaismansha97",
   image: "/assets/profile.png",
 };
 
@@ -105,16 +105,11 @@ const skillGroups = [
 
 const HOMEPAGE_PREVIEW_COUNT = 3;
 const HERO_WORDS = ["PURPOSE", "IMPACT", "INTENT"];
-const GLITCH_CHARS = ".,-_~+:;=*<>[]{}!?&#$@0123456789";
+const HERO_WORD_INTERVAL = 3400;
 const TRANSITION_PATHS = [
   "M227.549 1818.76C227.549 1818.76 406.016 2207.75 569.049 2130.26C843.431 1999.85 -264.104 1002.3 227.549 876.262C552.918 792.849 773.647 2456.11 1342.05 2130.26C1885.43 1818.76 14.9644 455.772 760.548 137.262C1342.05 -111.152 1663.5 2266.35 2209.55 1972.76C2755.6 1679.18 1536.63 384.467 1826.55 137.262C2013.5 -22.1463 2209.55 381.262 2209.55 381.262",
   "M1661.28 2255.51C1661.28 2255.51 2311.09 1960.37 2111.78 1817.01C1944.47 1696.67 718.456 2870.17 499.781 2255.51C308.969 1719.17 2457.51 1613.83 2111.78 963.512C1766.05 313.198 427.949 2195.17 132.281 1455.51C-155.219 736.292 2014.78 891.514 1708.78 252.012C1437.81 -314.29 369.471 909.169 132.281 566.512C18.1772 401.672 244.781 193.012 244.781 193.012",
 ];
-
-const WAVE_THRESH = 3;
-const CHAR_MULT = 3;
-const ANIM_STEP = 40;
-const WAVE_BUF = 5;
 
 const MOTION = {
   durations: {
@@ -188,18 +183,15 @@ function usePortfolioNavigation(onNavigate) {
 }
 
 function useRouteScroll(page, scrollPositions) {
-  useEffect(() => {
-    const frame = window.requestAnimationFrame(() => {
-      const hash = window.location.hash;
-      if (page === "home" && hash) {
-        document.querySelector(hash)?.scrollIntoView({ block: "start" });
-      } else if (page !== "home") {
-        window.scrollTo({ top: 0, behavior: "auto" });
-      } else if (scrollPositions.current["/"]) {
-        window.scrollTo({ top: scrollPositions.current["/"] , behavior: "auto" });
-      }
-    });
-    return () => window.cancelAnimationFrame(frame);
+  useLayoutEffect(() => {
+    const hash = window.location.hash;
+    if (page === "home" && hash) {
+      document.querySelector(hash)?.scrollIntoView({ block: "start" });
+    } else if (page !== "home") {
+      window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    } else if (scrollPositions.current["/"]) {
+      window.scrollTo({ top: scrollPositions.current["/"], left: 0, behavior: "auto" });
+    }
   }, [page, scrollPositions]);
 }
 
@@ -354,203 +346,76 @@ function GlobalBackground({ reducedMotion, isMobile }) {
   );
 }
 
-function AsciiGlitchRipple({
-  children,
-  as: Component = "span",
-  className = "",
-  dur = 850,
-  chars = GLITCH_CHARS,
-  preserveSpaces = true,
-  spread = 1,
-  reducedMotion = false,
-  ...props
-}) {
-  const elRef = useRef(null);
-  const stateRef = useRef({
-    origTxt: children,
-    origChars: children.split(""),
-    isAnim: false,
-    cursorPos: 0,
-    waves: [],
-    animId: null,
-    isHover: false,
-    origW: null,
-    dur,
-    chars,
-    preserveSpaces,
-    spread,
-  });
+function FlipFadeLetter({ char, letterDuration }) {
+  return (
+    <motion.span
+      className="hero-flip-word__letter"
+      style={{ transformStyle: "preserve-3d" }}
+      variants={{
+        initial: {
+          rotateX: 90,
+          y: 20,
+          opacity: 0,
+          filter: "blur(8px)",
+        },
+        animate: {
+          rotateX: 0,
+          y: 0,
+          opacity: 1,
+          filter: "blur(0px)",
+          transition: {
+            duration: letterDuration,
+            ease: [0.2, 0.65, 0.3, 0.9],
+          },
+        },
+        exit: {
+          rotateX: -90,
+          y: -20,
+          opacity: 0,
+          filter: "blur(8px)",
+          transition: {
+            duration: letterDuration * 0.67,
+            ease: "easeIn",
+          },
+        },
+      }}
+    >
+      {char}
+    </motion.span>
+  );
+}
 
-  useEffect(() => {
-    stateRef.current.origTxt = children;
-    stateRef.current.origChars = children.split("");
-    stateRef.current.dur = dur;
-    stateRef.current.chars = chars;
-    stateRef.current.preserveSpaces = preserveSpaces;
-    stateRef.current.spread = spread;
-
-    if (stateRef.current.origW !== null && elRef.current) {
-      elRef.current.style.width = "";
-      stateRef.current.origW = null;
-    }
-
-    if (!stateRef.current.isAnim && elRef.current) {
-      elRef.current.textContent = children;
-    }
-  }, [children, dur, chars, preserveSpaces, spread]);
-
-  useEffect(() => {
-    const el = elRef.current;
-    if (!el) return undefined;
-
-    el.textContent = children;
-    if (reducedMotion) return undefined;
-
-    let initialWave = null;
-
-    const updateCursorPos = (event) => {
-      const rect = el.getBoundingClientRect();
-      const len = stateRef.current.origTxt.length;
-      const x = event.clientX - rect.left;
-      const pos = Math.round((x / rect.width) * len);
-      stateRef.current.cursorPos = Math.max(0, Math.min(pos, len - 1));
-    };
-
-    const stop = () => {
-      el.textContent = stateRef.current.origTxt;
-      el.classList.remove("as");
-      stateRef.current.waves = [];
-
-      if (stateRef.current.origW !== null) {
-        el.style.width = "";
-        stateRef.current.origW = null;
-      }
-
-      stateRef.current.isAnim = false;
-      if (stateRef.current.animId) {
-        window.cancelAnimationFrame(stateRef.current.animId);
-        stateRef.current.animId = null;
-      }
-    };
-
-    const calcWaveEffect = (charIdx, time) => {
-      let shouldAnim = false;
-      let resultChar = stateRef.current.origChars[charIdx];
-
-      for (const wave of stateRef.current.waves) {
-        const age = time - wave.startTime;
-        const progress = Math.min(age / stateRef.current.dur, 1);
-        const dist = Math.abs(charIdx - wave.startPos);
-        const maxDist = Math.max(wave.startPos, stateRef.current.origChars.length - wave.startPos - 1);
-        const radius = (progress * (maxDist + WAVE_BUF)) / stateRef.current.spread;
-
-        if (dist <= radius) {
-          shouldAnim = true;
-          const intensity = Math.max(0, radius - dist);
-          if (intensity <= WAVE_THRESH && intensity > 0) {
-            const index = (dist * CHAR_MULT + Math.floor(age / ANIM_STEP)) % stateRef.current.chars.length;
-            resultChar = stateRef.current.chars[index];
-          }
-        }
-      }
-
-      return { shouldAnim, char: resultChar };
-    };
-
-    const genScrambledText = (time) =>
-      stateRef.current.origChars
-        .map((char, index) => {
-          if (stateRef.current.preserveSpaces && char === " ") return " ";
-          const result = calcWaveEffect(index, time);
-          return result.shouldAnim ? result.char : char;
-        })
-        .join("");
-
-    const start = () => {
-      if (stateRef.current.isAnim) return;
-
-      if (stateRef.current.origW === null) {
-        stateRef.current.origW = el.getBoundingClientRect().width;
-        el.style.width = `${stateRef.current.origW}px`;
-      }
-
-      stateRef.current.isAnim = true;
-      el.classList.add("as");
-
-      const animate = () => {
-        const time = Date.now();
-        stateRef.current.waves = stateRef.current.waves.filter((wave) => time - wave.startTime < stateRef.current.dur);
-
-        if (stateRef.current.waves.length === 0) {
-          stop();
-          return;
-        }
-
-        el.textContent = genScrambledText(time);
-        stateRef.current.animId = window.requestAnimationFrame(animate);
-      };
-
-      stateRef.current.animId = window.requestAnimationFrame(animate);
-    };
-
-    const startWave = (startPos = stateRef.current.cursorPos) => {
-      stateRef.current.waves.push({
-        startPos,
-        startTime: Date.now(),
-        id: Math.random(),
-      });
-
-      if (!stateRef.current.isAnim) start();
-    };
-
-    const handleEnter = (event) => {
-      stateRef.current.isHover = true;
-      updateCursorPos(event);
-      startWave();
-    };
-
-    const handleMove = (event) => {
-      if (!stateRef.current.isHover) return;
-      const oldPos = stateRef.current.cursorPos;
-      updateCursorPos(event);
-      if (stateRef.current.cursorPos !== oldPos) startWave();
-    };
-
-    const handleLeave = () => {
-      stateRef.current.isHover = false;
-    };
-
-    el.addEventListener("mouseenter", handleEnter);
-    el.addEventListener("mousemove", handleMove);
-    el.addEventListener("mouseleave", handleLeave);
-
-    initialWave = window.setTimeout(() => {
-      stateRef.current.cursorPos = Math.floor(stateRef.current.origChars.length / 2);
-      startWave(stateRef.current.cursorPos);
-    }, 30);
-
-    return () => {
-      if (initialWave) window.clearTimeout(initialWave);
-      el.removeEventListener("mouseenter", handleEnter);
-      el.removeEventListener("mousemove", handleMove);
-      el.removeEventListener("mouseleave", handleLeave);
-      if (stateRef.current.animId) {
-        window.cancelAnimationFrame(stateRef.current.animId);
-        stateRef.current.animId = null;
-      }
-      el.classList.remove("as");
-      el.style.width = "";
-      stateRef.current.origW = null;
-      stateRef.current.waves = [];
-      stateRef.current.isAnim = false;
-      stateRef.current.isHover = false;
-    };
-  }, [children, reducedMotion]);
+function FlipFadeWord({ text, letterDuration = 0.6, staggerDelay = 0.1, exitStaggerDelay = 0.05 }) {
+  const letters = useMemo(() => text.split(""), [text]);
 
   return (
-    <Component ref={elRef} className={`ascii-glitch-ripple ${className}`.trim()} {...props}>
-      {children}
-    </Component>
+    <motion.span
+      key={text}
+      className="hero-section__accent hero-rotating-word__value hero-flip-word"
+      initial="initial"
+      animate="animate"
+      exit="exit"
+      aria-hidden="true"
+      variants={{
+        initial: { opacity: 1 },
+        animate: {
+          opacity: 1,
+          transition: {
+            staggerChildren: staggerDelay,
+          },
+        },
+        exit: {
+          opacity: 1,
+          transition: {
+            staggerChildren: exitStaggerDelay,
+          },
+        },
+      }}
+    >
+      {letters.map((char, index) => (
+        <FlipFadeLetter key={`${char}-${index}`} char={char} letterDuration={letterDuration} />
+      ))}
+    </motion.span>
   );
 }
 
@@ -561,7 +426,7 @@ function RotatingHeroWord({ reducedMotion }) {
     if (reducedMotion) return undefined;
     const interval = window.setInterval(() => {
       setWordIndex((current) => (current + 1) % HERO_WORDS.length);
-    }, 2000);
+    }, HERO_WORD_INTERVAL);
     return () => window.clearInterval(interval);
   }, [reducedMotion]);
 
@@ -569,9 +434,17 @@ function RotatingHeroWord({ reducedMotion }) {
 
   return (
     <span className="hero-rotating-word" aria-live="polite">
-      <AsciiGlitchRipple className="hero-section__accent hero-rotating-word__value" reducedMotion={reducedMotion} aria-hidden="true">
-        {word}
-      </AsciiGlitchRipple>
+      <span className="hero-rotating-word__stage" style={{ perspective: "1000px" }}>
+        {reducedMotion ? (
+          <span className="hero-section__accent hero-rotating-word__value hero-flip-word" aria-hidden="true">
+            {word}
+          </span>
+        ) : (
+          <AnimatePresence mode="wait">
+            <FlipFadeWord text={word} />
+          </AnimatePresence>
+        )}
+      </span>
       <span className="sr-only">{word}</span>
     </span>
   );
@@ -834,10 +707,10 @@ function Header() {
 
 function SectionHeading({ eyebrow, title, children, className = "" }) {
   return (
-    <div className={`max-w-3xl ${className}`}>
-      <p className="mb-4 text-xs font-black uppercase text-amber-300">{eyebrow}</p>
-      <h2 className="text-balance text-4xl font-black leading-[1.05] text-[#f5efe4] md:text-5xl">{title}</h2>
-      {children ? <div className="mt-5 text-base leading-8 text-[#b6c1ba] md:text-lg">{children}</div> : null}
+    <div className={`section-heading ${className}`}>
+      {eyebrow ? <p className="section-heading__eyebrow">{eyebrow}</p> : null}
+      <h2 className="section-heading__title">{title}</h2>
+      {children ? <div className="section-heading__body">{children}</div> : null}
     </div>
   );
 }
@@ -872,13 +745,13 @@ function Hero({ isReady, reducedMotion }) {
             <div className="hero-section__actions flex flex-wrap gap-3">
               <a
                 href="#work"
-                className="hero-section__primary-button inline-flex min-h-12 items-center gap-2 rounded-lg px-5 py-3 text-sm font-black transition hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-lime-300"
+                className="portfolio-action portfolio-action--solid inline-flex min-h-12 items-center gap-2 rounded-lg px-5 py-3 text-sm font-black focus:outline-none"
               >
                 View Projects <ArrowRight size={18} aria-hidden="true" />
               </a>
               <button
                 type="button"
-                className="hero-section__cv-button inline-flex min-h-12 items-center gap-2 rounded-lg px-5 py-3 text-sm font-black transition focus:outline-none focus:ring-2 focus:ring-lime-300"
+                className="portfolio-action portfolio-action--disabled inline-flex min-h-12 items-center gap-2 rounded-lg px-5 py-3 text-sm font-black focus:outline-none"
                 aria-disabled="true"
                 aria-label="Download CV — CV coming soon"
                 title="CV coming soon"
@@ -888,7 +761,7 @@ function Hero({ isReady, reducedMotion }) {
               </button>
             </div>
             <p className="hero-section__description max-w-2xl">
-              I’m Awais Mansha — a DevOps and Cloud Engineer focused on reusable infrastructure, secure cloud platforms, and automated delivery systems built to evolve.
+              Based in the UK, I’m Awais Mansha — a DevOps and Cloud Engineer focused on reusable infrastructure, secure cloud platforms, and automated delivery systems built to evolve.
             </p>
           </div>
         </motion.div>
@@ -908,7 +781,7 @@ function ProjectCard({ project, index, variant = "carousel", onScrollLeft, onScr
     <motion.article
       data-carousel-card={isCarousel ? true : undefined}
       data-card-focus={isCarousel ? (isFocused ? "true" : "false") : undefined}
-      className={`group portfolio-card overflow-hidden rounded-lg border border-white/10 bg-white/[0.055] shadow-2xl shadow-black/25 transition hover:-translate-y-1 hover:border-amber-300/40 focus-within:border-amber-300/40 ${
+      className={`group portfolio-card overflow-hidden rounded-lg border border-white/10 bg-white/[0.055] shadow-2xl shadow-black/25 transition hover:-translate-y-1 hover:border-lime-300/40 focus-within:border-lime-300/40 ${
         isCarousel ? "w-full shrink-0 snap-start" : "h-full"
       }`}
       style={tilt.style}
@@ -932,7 +805,7 @@ function ProjectCard({ project, index, variant = "carousel", onScrollLeft, onScr
             </div>
           </div>
         )}
-        <div className="absolute inset-x-3 top-3 max-h-0 overflow-hidden rounded-lg border border-white/10 bg-[#0f1211]/92 opacity-0 shadow-xl shadow-black/30 backdrop-blur transition-all duration-300 group-hover:max-h-36 group-hover:opacity-100 group-focus-within:max-h-36 group-focus-within:opacity-100">
+        <div className="absolute inset-x-3 top-3 max-h-0 overflow-hidden rounded-lg border border-white/10 bg-[#0f1211]/92 opacity-0 shadow-xl shadow-black/30 backdrop-blur transition-[max-height,opacity] duration-300 group-hover:max-h-36 group-hover:opacity-100 group-focus-within:max-h-36 group-focus-within:opacity-100">
           <ul className="flex flex-wrap gap-2 p-3" aria-label={`${project.title} tools`}>
             {project.tags.map((tag) => (
               <li key={tag} className="rounded-full border border-cyan-300/20 bg-cyan-300/10 px-2.5 py-1 text-xs font-bold text-[#d7dfd8]">
@@ -955,7 +828,7 @@ function ProjectCard({ project, index, variant = "carousel", onScrollLeft, onScr
                   event.stopPropagation();
                   onScrollLeft?.();
                 }}
-                className="pointer-events-auto grid size-11 -translate-x-2 place-items-center rounded-full border border-white/20 bg-[#0f1211]/80 text-[#f5efe4] shadow-xl shadow-black/35 backdrop-blur transition hover:border-cyan-300/70 hover:bg-[#0f1211]/95 group-hover:translate-x-0 group-focus-within:translate-x-0 focus:outline-none focus:ring-2 focus:ring-cyan-200"
+                className="portfolio-icon-action pointer-events-auto grid size-11 -translate-x-2 place-items-center rounded-full shadow-xl shadow-black/35 backdrop-blur group-hover:translate-x-0 group-focus-within:translate-x-0 focus:outline-none"
               >
                 <ChevronLeft size={21} aria-hidden="true" />
               </button>
@@ -971,7 +844,7 @@ function ProjectCard({ project, index, variant = "carousel", onScrollLeft, onScr
                   event.stopPropagation();
                   onScrollRight?.();
                 }}
-                className="pointer-events-auto grid size-11 translate-x-2 place-items-center rounded-full border border-white/20 bg-[#0f1211]/80 text-[#f5efe4] shadow-xl shadow-black/35 backdrop-blur transition hover:border-cyan-300/70 hover:bg-[#0f1211]/95 group-hover:translate-x-0 group-focus-within:translate-x-0 focus:outline-none focus:ring-2 focus:ring-cyan-200"
+                className="portfolio-icon-action pointer-events-auto grid size-11 translate-x-2 place-items-center rounded-full shadow-xl shadow-black/35 backdrop-blur group-hover:translate-x-0 group-focus-within:translate-x-0 focus:outline-none"
               >
                 <ChevronRight size={21} aria-hidden="true" />
               </button>
@@ -986,7 +859,7 @@ function ProjectCard({ project, index, variant = "carousel", onScrollLeft, onScr
           <span className="grid size-11 place-items-center rounded-full border border-cyan-300/35 text-sm font-black text-cyan-300">
             {String(index + 1).padStart(2, "0")}
           </span>
-          <a href={project.github} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-white/15 bg-white/8 px-3 py-2 text-xs font-bold text-[#f5efe4] transition hover:border-cyan-300/60">
+          <a href={project.github} target="_blank" rel="noopener noreferrer" className="portfolio-action portfolio-action--compact inline-flex min-h-10 items-center gap-2 rounded-lg px-3 py-2 text-xs font-bold focus:outline-none">
             <GitBranch size={15} aria-hidden="true" /> GitHub
           </a>
         </div>
@@ -1008,13 +881,13 @@ function Work() {
   };
 
   return (
-    <section id="work" className="border-t border-white/10 bg-[#0f1211] px-4 py-20 md:px-8 md:py-28">
+    <section id="work" className="portfolio-section-surface border-t border-white/10 px-4 py-20 md:px-8 md:py-28">
       <div className="mx-auto max-w-7xl">
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <p className="text-xs font-black uppercase text-amber-300">Selected Work</p>
+          <SectionHeading title="Selected Work" />
           <a
             href="/projects"
-            className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-cyan-300/45 bg-cyan-300/10 px-4 py-2 text-sm font-black text-[#f5efe4] transition hover:border-cyan-300/80 hover:bg-cyan-300/15 focus:outline-none focus:ring-2 focus:ring-cyan-200"
+            className="portfolio-action inline-flex min-h-11 items-center gap-2 rounded-lg px-4 py-2 text-sm font-black focus:outline-none"
           >
             View All Projects <ArrowRight size={17} aria-hidden="true" />
           </a>
@@ -1072,7 +945,7 @@ function CertificationBadge({ item }) {
         href={item.href}
         target="_blank"
         rel="noopener noreferrer"
-        className="flex min-h-20 items-center gap-4 rounded-lg border border-white/10 bg-[#0f1211]/60 px-4 py-3 transition hover:border-amber-300/45 hover:bg-white/[0.07] focus:outline-none focus:ring-2 focus:ring-amber-200"
+        className="flex min-h-20 items-center gap-4 rounded-lg border border-white/10 bg-[#0f1211]/60 px-4 py-3 transition hover:border-lime-300/45 hover:bg-white/[0.07] focus:outline-none focus:ring-2 focus:ring-lime-200"
       >
         {content}
       </a>
@@ -1085,12 +958,10 @@ function CertificationBadge({ item }) {
 function Skills() {
   const reducedMotion = useReducedMotion();
   return (
-    <section id="skills" className="relative isolate overflow-hidden border-t border-white/10 bg-[#101413] px-4 py-20 md:px-8 md:py-28">
+    <section id="skills" className="portfolio-section-surface relative isolate overflow-hidden border-t border-white/10 px-4 py-20 md:px-8 md:py-28">
       <div className="skills-grid-background" aria-hidden="true" />
       <div className="mx-auto max-w-7xl">
-        <SectionHeading eyebrow="Skills" title="Hands-on tools across cloud, delivery, and observability.">
-          <p>A focused DevOps toolkit for building, shipping, monitoring, and operating production systems.</p>
-        </SectionHeading>
+        <SectionHeading title="Skills" />
 
         <div className="mt-10 grid gap-4 lg:grid-cols-4">
           {skillGroups.map(({ title, icon: Icon, items }, groupIndex) => (
@@ -1173,7 +1044,7 @@ function BlogCard({ post, variant = "carousel", onScrollLeft, onScrollRight, can
   return (
     <motion.article
       data-carousel-card={isCarousel ? true : undefined}
-      className={`group blog-card overflow-hidden rounded-lg border border-white/10 bg-white/[0.055] shadow-2xl shadow-black/20 transition hover:-translate-y-1 hover:border-amber-300/40 ${
+      className={`group blog-card overflow-hidden rounded-lg border border-white/10 bg-white/[0.055] shadow-2xl shadow-black/20 transition hover:-translate-y-1 hover:border-lime-300/40 ${
         isCarousel ? "w-full shrink-0 snap-start" : "h-full"
       }`}
       initial={reducedMotion ? false : { opacity: 0, y: 16 }}
@@ -1204,7 +1075,7 @@ function BlogCard({ post, variant = "carousel", onScrollLeft, onScrollRight, can
                     event.stopPropagation();
                     onScrollLeft?.();
                   }}
-                  className="pointer-events-auto grid size-11 -translate-x-2 place-items-center rounded-full border border-white/20 bg-[#0f1211]/80 text-[#f5efe4] shadow-xl shadow-black/35 backdrop-blur transition hover:border-amber-300/70 hover:bg-[#0f1211]/95 group-hover:translate-x-0 group-focus-within:translate-x-0 focus:outline-none focus:ring-2 focus:ring-amber-200"
+                  className="portfolio-icon-action pointer-events-auto grid size-11 -translate-x-2 place-items-center rounded-full shadow-xl shadow-black/35 backdrop-blur group-hover:translate-x-0 group-focus-within:translate-x-0 focus:outline-none"
                 >
                   <ChevronLeft size={21} aria-hidden="true" />
                 </button>
@@ -1220,7 +1091,7 @@ function BlogCard({ post, variant = "carousel", onScrollLeft, onScrollRight, can
                     event.stopPropagation();
                     onScrollRight?.();
                   }}
-                  className="pointer-events-auto grid size-11 translate-x-2 place-items-center rounded-full border border-white/20 bg-[#0f1211]/80 text-[#f5efe4] shadow-xl shadow-black/35 backdrop-blur transition hover:border-amber-300/70 hover:bg-[#0f1211]/95 group-hover:translate-x-0 group-focus-within:translate-x-0 focus:outline-none focus:ring-2 focus:ring-amber-200"
+                  className="portfolio-icon-action pointer-events-auto grid size-11 translate-x-2 place-items-center rounded-full shadow-xl shadow-black/35 backdrop-blur group-hover:translate-x-0 group-focus-within:translate-x-0 focus:outline-none"
                 >
                   <ChevronRight size={21} aria-hidden="true" />
                 </button>
@@ -1237,7 +1108,7 @@ function BlogCard({ post, variant = "carousel", onScrollLeft, onScrollRight, can
             <p className="text-xs font-black uppercase text-cyan-300">Medium article</p>
             <h3 className="mt-3 text-2xl font-black leading-tight text-[#f5efe4]">{post.title}</h3>
           </div>
-          <a href={post.href} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-white/15 bg-white/8 px-3 py-2 text-xs font-bold text-[#f5efe4] transition hover:border-amber-300/60">
+          <a href={post.href} target="_blank" rel="noopener noreferrer" className="portfolio-action portfolio-action--compact inline-flex min-h-10 items-center gap-2 rounded-lg px-3 py-2 text-xs font-bold focus:outline-none">
             Read on Medium <ExternalLink size={15} aria-hidden="true" />
           </a>
         </div>
@@ -1258,13 +1129,13 @@ function Blog() {
   };
 
   return (
-    <section id="blog" className="border-t border-white/10 bg-[linear-gradient(135deg,rgba(242,184,75,0.10),transparent_34%),#151917] px-4 py-20 md:px-8 md:py-28">
+    <section id="blog" className="portfolio-section-surface border-t border-white/10 px-4 py-20 md:px-8 md:py-28">
       <div className="mx-auto max-w-7xl">
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <p className="text-xs font-black uppercase text-amber-300">Blog</p>
+          <SectionHeading title="Blog" />
           <a
             href="/blogs"
-            className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-amber-300/45 bg-amber-300/10 px-4 py-2 text-sm font-black text-[#f5efe4] transition hover:border-amber-300/80 hover:bg-amber-300/15 focus:outline-none focus:ring-2 focus:ring-amber-200"
+            className="portfolio-action inline-flex min-h-11 items-center gap-2 rounded-lg px-4 py-2 text-sm font-black focus:outline-none"
           >
             View All Blogs <ArrowRight size={17} aria-hidden="true" />
           </a>
@@ -1293,20 +1164,11 @@ function Blog() {
 }
 
 function Process() {
-  const processRef = useRef(null);
-  const reducedMotion = useReducedMotion();
-  const { scrollYProgress } = useScroll({ target: processRef, offset: ["start 0.82", "end 0.32"] });
-  const lineScale = useSpring(useTransform(scrollYProgress, [0, 1], [0, 1]), { stiffness: 120, damping: 24 });
-
   return (
-    <section ref={processRef} id="process" className="relative isolate overflow-hidden border-t border-white/10 bg-[#0f1211] px-4 py-20 md:px-8 md:py-28">
+    <section id="process" className="portfolio-section-surface relative isolate overflow-hidden border-t border-white/10 px-4 py-20 md:px-8 md:py-28">
       <div className="mx-auto max-w-7xl">
-        <SectionHeading eyebrow="Process" title="How I Work" />
+        <SectionHeading title="Process" />
 
-        <div className="process-path" aria-hidden="true">
-          <div className="process-path__track" />
-          <motion.div className="process-path__progress" style={{ scaleY: reducedMotion ? 1 : lineScale }} />
-        </div>
         <div className="relative z-10 mt-10 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {processSteps.map(([step, title, body], index) => (
             <ProcessStep key={step} step={step} title={title} body={body} index={index} />
@@ -1359,31 +1221,34 @@ function Contact() {
   };
 
   return (
-    <section id="contact" className="contact-section border-t border-white/10 bg-[linear-gradient(135deg,rgba(242,184,75,0.12),transparent_32%),linear-gradient(315deg,rgba(239,113,94,0.10),transparent_34%),#121614] px-4 py-20 md:px-8 md:py-28">
+    <section id="contact" className="portfolio-section-surface contact-section border-t border-white/10 px-4 py-20 md:px-8 md:py-28">
       <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.85fr_1.15fr]">
         <Reveal>
-          <SectionHeading eyebrow="Contact" title="Need a DevOps engineer who can make delivery calmer?">
-            <p>Send a note about your platform, cloud, automation, or reliability work. I will reply with the next useful step.</p>
+          <SectionHeading title="Contact">
+            <p>Need a DevOps engineer who can make delivery calmer? Send a note about your platform, cloud, automation, or reliability work. I will reply with the next useful step.</p>
           </SectionHeading>
         </Reveal>
 
         <motion.div className="contact-panel rounded-lg border border-white/10 bg-white/[0.055] p-6 shadow-2xl shadow-black/25" initial={reducedMotion ? false : { opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.2 }} transition={{ duration: reducedMotion ? 0.01 : MOTION.durations.reveal, delay: reducedMotion ? 0 : MOTION.stagger, ease: MOTION.ease }}>
-          <a href={`mailto:${email}`} className="block border-b border-white/10 pb-6 text-3xl font-black leading-tight text-[#f5efe4] transition hover:text-cyan-200 md:text-5xl">
+          <a href={`mailto:${email}`} className="block border-b border-white/10 pb-6 text-3xl font-black leading-tight text-[#f5efe4] transition-colors duration-200 hover:text-[#e0ff72] md:text-5xl">
             {email}
           </a>
           <div className="mt-6 flex flex-wrap gap-3">
             <button
               type="button"
               onClick={copyEmail}
-              className="inline-flex min-h-12 items-center gap-2 rounded-lg border border-white/20 bg-white/8 px-5 py-3 text-sm font-bold text-[#f5efe4] transition hover:-translate-y-0.5 hover:border-cyan-300/60 focus:outline-none focus:ring-2 focus:ring-cyan-200"
+              className="portfolio-action inline-flex min-h-12 items-center gap-2 rounded-lg px-5 py-3 text-sm font-bold focus:outline-none"
             >
               <Copy size={18} aria-hidden="true" /> {copied ? "Copied" : "Copy Email"}
             </button>
-            <a href={profile.github} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-12 items-center gap-2 rounded-lg border border-white/20 bg-white/8 px-5 py-3 text-sm font-bold text-[#f5efe4] transition hover:-translate-y-0.5 hover:border-amber-300/60">
+            <a href={profile.github} target="_blank" rel="noopener noreferrer" className="portfolio-action inline-flex min-h-12 items-center gap-2 rounded-lg px-5 py-3 text-sm font-bold focus:outline-none">
               <GitBranch size={18} aria-hidden="true" /> GitHub
             </a>
-            <a href={profile.linkedin} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-12 items-center gap-2 rounded-lg border border-white/20 bg-white/8 px-5 py-3 text-sm font-bold text-[#f5efe4] transition hover:-translate-y-0.5 hover:border-amber-300/60">
+            <a href={profile.linkedin} target="_blank" rel="noopener noreferrer" className="portfolio-action inline-flex min-h-12 items-center gap-2 rounded-lg px-5 py-3 text-sm font-bold focus:outline-none">
               <ExternalLink size={18} aria-hidden="true" /> LinkedIn
+            </a>
+            <a href={profile.medium} target="_blank" rel="noopener noreferrer" className="portfolio-action inline-flex min-h-12 items-center gap-2 rounded-lg px-5 py-3 text-sm font-bold focus:outline-none">
+              <ExternalLink size={18} aria-hidden="true" /> Medium
             </a>
           </div>
         </motion.div>
@@ -1394,24 +1259,18 @@ function Contact() {
 
 function ListingPage({ type }) {
   const isProjects = type === "projects";
-  const title = isProjects ? "All DevOps projects" : "All technical writing";
-  const eyebrow = isProjects ? "Projects" : "Blog";
-  const body = isProjects
-    ? "A fuller view of the infrastructure, Kubernetes, automation, and delivery systems behind the selected work."
-    : "All published DevOps notes and walkthroughs, with each post linking to the full article on Medium.";
+  const title = isProjects ? "Projects" : "Blogs";
   const items = isProjects ? projects : blogPosts;
 
   return (
     <main id="content">
-      <section id="top" className="min-h-screen border-t border-white/10 bg-[linear-gradient(135deg,rgba(24,199,187,0.10),transparent_32%),linear-gradient(315deg,rgba(242,184,75,0.10),transparent_34%),#0f1211] px-4 pb-20 pt-32 md:px-8 md:pb-28 md:pt-36">
+      <section id="top" className="portfolio-section-surface min-h-screen border-t border-white/10 px-4 pb-20 pt-32 md:px-8 md:pb-28 md:pt-36">
         <div className="mx-auto max-w-7xl">
           <div className="flex flex-wrap items-end justify-between gap-6">
-            <SectionHeading eyebrow={eyebrow} title={title}>
-              <p>{body}</p>
-            </SectionHeading>
+            <SectionHeading title={title} className="section-heading--listing" />
             <a
               href={isProjects ? "/#work" : "/#blog"}
-              className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-white/15 bg-white/8 px-4 py-2 text-sm font-bold text-[#f5efe4] transition hover:border-cyan-300/60 hover:bg-white/12 focus:outline-none focus:ring-2 focus:ring-cyan-200"
+              className="portfolio-action inline-flex min-h-11 items-center gap-2 rounded-lg px-4 py-2 text-sm font-bold focus:outline-none"
             >
               <ChevronLeft size={17} aria-hidden="true" /> Back to homepage
             </a>
@@ -1538,7 +1397,7 @@ function App() {
   useRouteScroll(page, scrollPositions);
 
   return (
-    <div className="min-h-screen bg-[#0f1211] text-[#f5efe4] selection:bg-cyan-300/30">
+    <div className="min-h-screen bg-[#050706] text-[#f5efe4] selection:bg-cyan-300/30">
       <AnimatePresence>{isLoaderVisible ? <Loader reducedMotion={prefersReducedMotion} /> : null}</AnimatePresence>
       <GlobalBackground reducedMotion={prefersReducedMotion} isMobile={isMobile} />
       <a href="#content" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[60] focus:rounded-lg focus:border focus:border-cyan-300 focus:bg-[#0f1211] focus:px-4 focus:py-3">
@@ -1548,9 +1407,9 @@ function App() {
       <motion.div
         key={page}
         className="portfolio-route"
-        initial={prefersReducedMotion ? false : { opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: prefersReducedMotion ? 0.01 : MOTION.durations.route, ease: MOTION.ease }}
+        initial={false}
+        animate={{ opacity: 1 }}
+        transition={{ duration: prefersReducedMotion ? 0.01 : MOTION.durations.fast, ease: MOTION.ease }}
       >
         {page === "home" ? (
           <main id="content">
@@ -1568,7 +1427,7 @@ function App() {
       <AnimatePresence>
         {routeTransition ? <SvgRouteTransition phase={routeTransition.phase} /> : null}
       </AnimatePresence>
-      <footer className="border-t border-white/10 bg-[#0b0e0d] px-4 py-8 text-[#b6c1ba] md:px-8">
+      <footer className="border-t border-white/10 bg-[#050706] px-4 py-8 text-[#b6c1ba] md:px-8">
         <div className="mx-auto max-w-7xl">
           <p>&copy; {new Date().getFullYear()} {profile.name}.</p>
         </div>
