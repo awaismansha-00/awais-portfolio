@@ -599,13 +599,8 @@ canvas {
 }
 
 .portfolio-loader__bar--one {
-  width: 66.666%;
+  width: 100%;
   animation: loader-bar-fill 1.08s cubic-bezier(0.65, 0, 0.35, 1) forwards;
-}
-
-.portfolio-loader__bar--two {
-  width: 33.333%;
-  animation: loader-bar-fill 0.58s 0.42s cubic-bezier(0.65, 0, 0.35, 1) forwards;
 }
 
 .portfolio-loader__counter {

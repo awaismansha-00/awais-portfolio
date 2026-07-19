@@ -222,6 +222,7 @@ test("first-load loader persists across client-side internal navigation", async 
   await expect(page.getByRole("status", { name: "Loading portfolio" })).toBeVisible();
   await expect(page.locator(".portfolio-loader__counter")).toBeVisible();
   await expect(page.locator(".portfolio-loader__bars")).toBeVisible();
+  await expect(page.locator(".portfolio-loader__bar")).toHaveCount(1);
   await expect(page.locator(".portfolio-loader__counter")).toHaveCSS("color", "rgb(199, 255, 0)");
   await expect(page.locator(".portfolio-loader__bar").first()).toHaveCSS("background-color", "rgb(199, 255, 0)");
   await expect(page.locator(".portfolio-loader__label")).toHaveCSS("color", "rgba(199, 255, 0, 0.58)");

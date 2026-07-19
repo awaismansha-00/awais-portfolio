@@ -272,7 +272,6 @@ function Loader({ reducedMotion }) {
     >
       <div className="portfolio-loader__bars" aria-hidden="true">
         <span className="portfolio-loader__bar portfolio-loader__bar--one" />
-        <span className="portfolio-loader__bar portfolio-loader__bar--two" />
       </div>
       <div className="portfolio-loader__counter" aria-hidden="true">
         <span className="portfolio-loader__digit portfolio-loader__digit--hundreds">
