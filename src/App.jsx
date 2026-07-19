@@ -109,6 +109,10 @@ const skillGroups = [
 const HOMEPAGE_PREVIEW_COUNT = 3;
 const HERO_WORDS = ["PURPOSE", "IMPACT", "INTENT"];
 const HERO_WORD_INTERVAL = 3400;
+const FEATURED_IMAGE_URLS = [
+  ...projects.slice(0, HOMEPAGE_PREVIEW_COUNT).map((project) => project.image),
+  ...blogPosts.slice(0, HOMEPAGE_PREVIEW_COUNT).map((post) => post.image),
+].filter(Boolean);
 const TRANSITION_PATHS = [
   "M227.549 1818.76C227.549 1818.76 406.016 2207.75 569.049 2130.26C843.431 1999.85 -264.104 1002.3 227.549 876.262C552.918 792.849 773.647 2456.11 1342.05 2130.26C1885.43 1818.76 14.9644 455.772 760.548 137.262C1342.05 -111.152 1663.5 2266.35 2209.55 1972.76C2755.6 1679.18 1536.63 384.467 1826.55 137.262C2013.5 -22.1463 2209.55 381.262 2209.55 381.262",
   "M1661.28 2255.51C1661.28 2255.51 2311.09 1960.37 2111.78 1817.01C1944.47 1696.67 718.456 2870.17 499.781 2255.51C308.969 1719.17 2457.51 1613.83 2111.78 963.512C1766.05 313.198 427.949 2195.17 132.281 1455.51C-155.219 736.292 2014.78 891.514 1708.78 252.012C1437.81 -314.29 369.471 909.169 132.281 566.512C18.1772 401.672 244.781 193.012 244.781 193.012",
@@ -133,9 +137,62 @@ const MOTION = {
 };
 
 const INTERNAL_PATHS = new Set(["/", "/projects", "/blogs"]);
+const ROUTE_IMAGE_PRELOAD_TIMEOUT = 900;
+const imagePreloadPromises = new Map();
 
 function getPageFromPathname(pathname) {
   return INTERNAL_PATHS.has(pathname) && pathname !== "/" ? pathname.slice(1) : "home";
+}
+
+function preloadImage(src) {
+  if (!src) return Promise.resolve();
+
+  const imageUrl = new URL(src, window.location.origin).href;
+  if (imagePreloadPromises.has(imageUrl)) return imagePreloadPromises.get(imageUrl);
+
+  const preloadPromise = new Promise((resolve) => {
+    const image = new Image();
+    let settled = false;
+
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      resolve();
+    };
+
+    const decode = () => {
+      if (typeof image.decode === "function") {
+        image.decode().catch(() => undefined).then(finish);
+        return;
+      }
+      finish();
+    };
+
+    image.onload = decode;
+    image.onerror = finish;
+    image.src = imageUrl;
+
+    if (image.complete) decode();
+  });
+
+  imagePreloadPromises.set(imageUrl, preloadPromise);
+  return preloadPromise;
+}
+
+function getRouteImageUrls(page) {
+  if (page === "projects") return projects.map((project) => project.image).filter(Boolean);
+  if (page === "blogs") return blogPosts.map((post) => post.image).filter(Boolean);
+  return FEATURED_IMAGE_URLS;
+}
+
+function preloadRouteImages(page) {
+  const imageUrls = [...new Set(getRouteImageUrls(page))];
+  if (!imageUrls.length) return Promise.resolve();
+
+  return Promise.race([
+    Promise.all(imageUrls.map((imageUrl) => preloadImage(imageUrl))),
+    new Promise((resolve) => window.setTimeout(resolve, ROUTE_IMAGE_PRELOAD_TIMEOUT)),
+  ]).then(() => undefined);
 }
 
 function useInitialLoader() {
@@ -776,6 +833,7 @@ function ProjectCard({ project, index, variant = "carousel", onScrollLeft, onScr
   const reducedMotion = useReducedMotion();
   const finePointer = useMediaQuery("(hover: hover) and (pointer: fine)");
   const tilt = useTilt(isCarousel && finePointer && !reducedMotion);
+  const shouldReveal = !reducedMotion && !isCarousel && !project.image;
 
   return (
     <motion.article
@@ -787,14 +845,14 @@ function ProjectCard({ project, index, variant = "carousel", onScrollLeft, onScr
       style={tilt.style}
       onPointerMove={tilt.onPointerMove}
       onPointerLeave={tilt.onPointerLeave}
-      initial={reducedMotion ? false : { opacity: 0, y: 18 }}
+      initial={shouldReveal ? { opacity: 0, y: 18 } : false}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, amount: 0.15 }}
-      transition={{ duration: reducedMotion ? 0.01 : MOTION.durations.reveal, delay: reducedMotion ? 0 : index * MOTION.stagger, ease: MOTION.ease }}
+      transition={{ duration: shouldReveal ? MOTION.durations.reveal : 0.01, delay: shouldReveal ? index * MOTION.stagger : 0, ease: MOTION.ease }}
     >
       <div className="relative aspect-[16/9] overflow-hidden border-b border-white/10 bg-[#0f1211]">
         {project.image ? (
-          <img src={project.image} alt={`${project.title} architecture`} className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03] group-focus-within:scale-[1.03]" />
+          <img src={project.image} alt={`${project.title} architecture`} loading="eager" decoding="async" className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03] group-focus-within:scale-[1.03]" />
         ) : (
           <div className="grid h-full place-items-center bg-[linear-gradient(135deg,rgba(24,199,187,0.14),rgba(242,184,75,0.10)),#101413]">
             <div className="grid place-items-center gap-3 text-center">
@@ -1040,6 +1098,7 @@ function BlogCard({ post, variant = "carousel", onScrollLeft, onScrollRight, can
   const isCarousel = variant === "carousel";
   const showCarouselControls = isCarousel && (canScrollLeft || canScrollRight);
   const reducedMotion = useReducedMotion();
+  const shouldReveal = !reducedMotion && !isCarousel && !post.image;
 
   return (
     <motion.article
@@ -1047,15 +1106,15 @@ function BlogCard({ post, variant = "carousel", onScrollLeft, onScrollRight, can
       className={`group blog-card overflow-hidden rounded-lg border border-white/10 bg-white/[0.055] shadow-2xl shadow-black/20 transition hover:-translate-y-1 hover:border-lime-300/40 ${
         isCarousel ? "w-full shrink-0 snap-start" : "h-full"
       }`}
-      initial={reducedMotion ? false : { opacity: 0, y: 16 }}
+      initial={shouldReveal ? { opacity: 0, y: 16 } : false}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, amount: 0.16 }}
-      transition={{ duration: reducedMotion ? 0.01 : MOTION.durations.reveal, ease: MOTION.ease }}
+      transition={{ duration: shouldReveal ? MOTION.durations.reveal : 0.01, ease: MOTION.ease }}
     >
       {post.image || isCarousel ? (
         <div className="blog-card__media relative aspect-[16/9] overflow-hidden border-b border-white/10 bg-[#0f1211]">
           {post.image ? (
-            <img src={post.image} alt={`${post.title} architecture guide`} className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03] group-focus-within:scale-[1.03]" />
+            <img src={post.image} alt={`${post.title} architecture guide`} loading="eager" decoding="async" className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03] group-focus-within:scale-[1.03]" />
           ) : (
             <div className="grid h-full place-items-center bg-[linear-gradient(135deg,rgba(24,199,187,0.14),rgba(242,184,75,0.10)),#101413]">
               <span className="text-xs font-black uppercase text-amber-300">Medium article</span>
@@ -1306,6 +1365,10 @@ function App() {
     pageRef.current = page;
   }, [page]);
 
+  useEffect(() => {
+    [...new Set(FEATURED_IMAGE_URLS)].forEach((imageUrl) => preloadImage(imageUrl));
+  }, []);
+
   const clearRouteTimers = useCallback(() => {
     routeTimersRef.current.forEach((timer) => window.clearTimeout(timer));
     routeTimersRef.current = [];
@@ -1359,6 +1422,7 @@ function App() {
     if (routeInFlightRef.current) return true;
 
     scrollPositions.current[window.location.pathname] = window.scrollY;
+    const targetImagesReady = preloadRouteImages(nextPage).catch(() => undefined);
 
     const applyRoute = () => {
       if (!isPop) {
@@ -1378,15 +1442,17 @@ function App() {
     setRouteTransition({ phase: "cover" });
 
     const coverTimer = window.setTimeout(() => {
-      applyRoute();
-      setRouteTransition({ phase: "reveal" });
+      targetImagesReady.then(() => {
+        applyRoute();
+        setRouteTransition({ phase: "reveal" });
 
-      const revealTimer = window.setTimeout(() => {
-        routeInFlightRef.current = false;
-        setRouteTransition(null);
-      }, MOTION.durations.routeReveal * 1000);
+        const revealTimer = window.setTimeout(() => {
+          routeInFlightRef.current = false;
+          setRouteTransition(null);
+        }, MOTION.durations.routeReveal * 1000);
 
-      routeTimersRef.current.push(revealTimer);
+        routeTimersRef.current.push(revealTimer);
+      });
     }, MOTION.durations.routeCover * 1000);
 
     routeTimersRef.current.push(coverTimer);

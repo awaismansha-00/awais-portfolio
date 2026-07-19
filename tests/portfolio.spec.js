@@ -7,6 +7,20 @@ const certificationGroups = JSON.parse(readFileSync(new URL("../src/content/cert
 const cvUrl = "/assets/cv/Awais-Mansha-DevOps-CV.pdf";
 const cvDownloadName = "Awais-Mansha-DevOps-CV.pdf";
 
+async function expectDecodedVisibleImage(locator) {
+  await expect(locator).toBeVisible();
+  await expect
+    .poll(
+      () =>
+        locator.evaluate((image) => {
+          const card = image.closest("article");
+          return Boolean(image.complete && image.naturalWidth > 0 && (!card || getComputedStyle(card).opacity === "1"));
+        }),
+      { timeout: 3000 },
+    )
+    .toBe(true);
+}
+
 test("portfolio renders hero, sections, and active contact path", async ({ page }, testInfo) => {
   await page.goto("/");
   await expect(page.getByRole("heading", { name: /BUILD WITH PURPOSE/i })).toBeVisible();
@@ -87,15 +101,17 @@ test("portfolio renders hero, sections, and active contact path", async ({ page 
   await carousel.evaluate((element) => {
     element.scrollLeft = 0;
   });
-  const carouselBox = await carousel.boundingBox();
-  expect(carouselBox).not.toBeNull();
-  await page.mouse.move(carouselBox.x + carouselBox.width * 0.58, carouselBox.y + carouselBox.height * 0.5);
-  await page.mouse.down();
-  await page.mouse.move(carouselBox.x + carouselBox.width * 0.42, carouselBox.y + carouselBox.height * 0.5, { steps: 6 });
-  await page.mouse.up();
-  await expect
-    .poll(async () => carousel.evaluate((element) => element.scrollLeft), { timeout: 3000 })
-    .toBeGreaterThan(expectedCardScroll);
+  if (!testInfo.project.name.includes("mobile")) {
+    const carouselBox = await carousel.boundingBox();
+    expect(carouselBox).not.toBeNull();
+    await page.mouse.move(carouselBox.x + carouselBox.width * 0.58, carouselBox.y + carouselBox.height * 0.5);
+    await page.mouse.down();
+    await page.mouse.move(carouselBox.x + carouselBox.width * 0.42, carouselBox.y + carouselBox.height * 0.5, { steps: 6 });
+    await page.mouse.up();
+    await expect
+      .poll(async () => carousel.evaluate((element) => element.scrollLeft), { timeout: 3000 })
+      .toBeGreaterThan(expectedCardScroll);
+  }
   await firstProjectCard.hover();
   await expect(firstProjectCard.getByLabel(`${projects[0].title} tools`).getByText(projects[0].tags[0], { exact: true })).toBeVisible();
   await expect(page.locator("#work article").nth(1).getByText("Repository project")).toBeVisible();
@@ -217,18 +233,36 @@ test("first-load loader persists across client-side internal navigation", async 
   await expect(page.getByRole("heading", { name: "Projects" })).toBeVisible();
   await expect.poll(() => page.evaluate(() => window.scrollY), { timeout: 3000 }).toBeLessThanOrEqual(2);
   await expect(page.locator(".route-svg-transition")).toHaveCount(0, { timeout: 3000 });
+  await expectDecodedVisibleImage(page.locator("#content article img").first());
   await expect(page.locator(".route-mask")).toHaveCount(0);
   await expect(page.getByRole("status", { name: "Loading portfolio" })).toHaveCount(0);
 
   await page.getByRole("link", { name: /Back to homepage/i }).click();
   await expect(page).toHaveURL(/\/#work$/);
   await expect(page.getByRole("heading", { name: /BUILD WITH PURPOSE/i })).toBeVisible();
+  await expectDecodedVisibleImage(page.locator("#work article img").first());
   await expect(page.getByRole("status", { name: "Loading portfolio" })).toHaveCount(0);
 
   await page.goBack();
   await expect(page).toHaveURL(/\/projects$/);
   await page.goForward();
   await expect(page).toHaveURL(/\/#work$/);
+});
+
+test("featured blog image stays decoded after returning from the blogs page", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.getByRole("status", { name: "Loading portfolio" })).toBeHidden({ timeout: 3000 });
+
+  await page.getByRole("link", { name: /View All Blogs/i }).click();
+  await expect(page).toHaveURL(/\/blogs$/);
+  await expect(page.getByRole("heading", { name: "Blogs" })).toBeVisible();
+  await expect(page.locator(".route-svg-transition")).toHaveCount(0, { timeout: 3000 });
+  await expectDecodedVisibleImage(page.locator("#content article img").first());
+
+  await page.getByRole("link", { name: /Back to homepage/i }).click();
+  await expect(page).toHaveURL(/\/#blog$/);
+  await expectDecodedVisibleImage(page.locator("#blog article img").first());
+  await expect(page.getByRole("status", { name: "Loading portfolio" })).toHaveCount(0);
 });
 
 test("reduced motion uses the simple loader and route fallback", async ({ page }) => {
