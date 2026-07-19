@@ -8,7 +8,7 @@ A modern DevOps engineer portfolio built with Vite, React, Tailwind CSS, Three.j
 - `src/index.css` - Tailwind entry point and global CSS
 - `vite.config.js` - Vite config with React and Tailwind plugins
 - `public/assets/devops-hero.png` - generated hero image for production builds
-- `public/assets/profile.png` - profile picture used in the header and hero
+- `public/assets/profile.webp` - optimized profile picture used in the header
 - `public/assets/favicon.svg` - browser icon
 - `public/_headers` - security headers for hosts that support Netlify/Cloudflare-style headers
 - `public/_redirects` - SPA fallback so `/projects` and `/blogs` work as direct URLs on supported static hosts
@@ -24,7 +24,7 @@ Update these first:
 - Add, edit, remove, or reorder certifications in `src/content/certifications.json`.
 - Update the skills list in `src/App.jsx` if you want to add or reorder tools. Skill icons use `react-icons`.
 - Add your resume PDF to `public/assets/` and link it from the hero or contact section if you want a download button.
-- The profile picture is currently loaded from `public/assets/profile.png`.
+- The profile picture is currently loaded from `public/assets/profile.webp`.
 
 ## Edit Projects and Blogs
 

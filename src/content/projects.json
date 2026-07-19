@@ -3,7 +3,7 @@
     "title": "AWS 3-Tier Architecture with Terraform",
     "summary": "Terraform-managed 3-tier AWS architecture with reusable modules for networking, load balancing, compute, database, secrets, IAM, remote state, and monitoring.",
     "github": "https://github.com/awaismansha-00/aws_terraform_3tier",
-    "image": "/assets/projects/3-Tier AWS Architecture.png",
+    "image": "/assets/projects/3-Tier AWS Architecture.webp",
     "tags": ["AWS", "Terraform", "VPC", "ALB", "ASG", "RDS", "CloudWatch"]
   },
   {

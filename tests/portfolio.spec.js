@@ -32,7 +32,7 @@ test("portfolio renders hero, sections, and active contact path", async ({ page 
   const downloadCv = page.getByRole("link", { name: /Download CV/i });
   await expect(downloadCv).toHaveAttribute("href", cvUrl);
   await expect(downloadCv).toHaveAttribute("download", cvDownloadName);
-  await expect(page.locator(".hero-section__image")).toHaveAttribute("src", "/assets/awais-hero-portrait.png");
+  await expect(page.locator(".hero-section__image")).toHaveAttribute("src", "/assets/awais-hero-portrait.webp");
   await expect(page.locator(".hero-section__title")).toHaveCSS("font-family", /Archivo Black/i);
   await expect(page.locator(".hero-section__description")).toHaveCSS("font-family", /Space Mono/i);
   await expect(page.getByText("Devops engineer, cloud security and platform engineering", { exact: true })).toBeVisible();
@@ -171,10 +171,10 @@ test("portfolio renders hero, sections, and active contact path", async ({ page 
   });
 
   await expect(heroImage).toBeVisible();
-  await expect(heroImage).toHaveAttribute("src", "/assets/awais-hero-portrait.png");
+  await expect(heroImage).toHaveAttribute("src", "/assets/awais-hero-portrait.webp");
   const heroImageSize = await heroImage.evaluate((image) => ({ width: image.naturalWidth, height: image.naturalHeight }));
-  expect(heroImageSize.width).toBeGreaterThanOrEqual(2000);
-  expect(heroImageSize.height).toBeGreaterThanOrEqual(1500);
+  expect(heroImageSize.width).toBeGreaterThanOrEqual(1500);
+  expect(heroImageSize.height).toBeGreaterThanOrEqual(1100);
 });
 
 test("download cv link downloads the stable public pdf", async ({ page }) => {

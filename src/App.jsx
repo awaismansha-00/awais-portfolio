@@ -47,7 +47,7 @@ const profile = {
   github: "https://github.com/awaismansha-00",
   linkedin: "https://www.linkedin.com/in/awaismansha/",
   medium: "https://medium.com/@awaismansha97",
-  image: "/assets/profile.png",
+  image: "/assets/profile.webp",
 };
 
 const CV_URL = "/assets/cv/Awais-Mansha-DevOps-CV.pdf";
@@ -780,7 +780,7 @@ function Hero({ isReady, reducedMotion }) {
       <div className="hero-section__base" aria-hidden="true" />
       <div className="hero-section__grid" aria-hidden="true" />
       <div className="hero-section__visual" aria-hidden="true">
-        <img className="hero-section__image" src="/assets/awais-hero-portrait.png" alt="" />
+        <img className="hero-section__image" src="/assets/awais-hero-portrait.webp" alt="" />
         <div className="hero-section__image-wash" />
       </div>
       <div className="hero-section__visual-glow" aria-hidden="true" />
