@@ -4,6 +4,8 @@ import { readFileSync } from "node:fs";
 const projects = JSON.parse(readFileSync(new URL("../src/content/projects.json", import.meta.url), "utf8"));
 const blogPosts = JSON.parse(readFileSync(new URL("../src/content/blogs.json", import.meta.url), "utf8"));
 const certificationGroups = JSON.parse(readFileSync(new URL("../src/content/certifications.json", import.meta.url), "utf8"));
+const cvUrl = "/assets/cv/Awais-Mansha-DevOps-CV.pdf";
+const cvDownloadName = "Awais-Mansha-DevOps-CV.pdf";
 
 test("portfolio renders hero, sections, and active contact path", async ({ page }, testInfo) => {
   await page.goto("/");
@@ -13,7 +15,9 @@ test("portfolio renders hero, sections, and active contact path", async ({ page 
   await expect(workTogether).toHaveAttribute("href", "/#contact");
   await expect(workTogether).toHaveClass(/hero-contact-nav/);
   await expect(page.getByRole("link", { name: /Email Awais/i })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: /Download CV.*CV coming soon/i })).toBeDisabled();
+  const downloadCv = page.getByRole("link", { name: /Download CV/i });
+  await expect(downloadCv).toHaveAttribute("href", cvUrl);
+  await expect(downloadCv).toHaveAttribute("download", cvDownloadName);
   await expect(page.locator(".hero-section__image")).toHaveAttribute("src", "/assets/awais-hero-portrait.png");
   await expect(page.locator(".hero-section__title")).toHaveCSS("font-family", /Archivo Black/i);
   await expect(page.locator(".hero-section__description")).toHaveCSS("font-family", /Space Mono/i);
@@ -157,6 +161,17 @@ test("portfolio renders hero, sections, and active contact path", async ({ page 
   expect(heroImageSize.height).toBeGreaterThanOrEqual(1500);
 });
 
+test("download cv link downloads the stable public pdf", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.getByRole("status", { name: "Loading portfolio" })).toBeHidden({ timeout: 3000 });
+
+  const downloadPromise = page.waitForEvent("download");
+  await page.getByRole("link", { name: /Download CV/i }).click();
+  const download = await downloadPromise;
+
+  expect(download.suggestedFilename()).toBe(cvDownloadName);
+});
+
 test("portfolio renders full project and blog pages at real URLs", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("link", { name: /View All Projects/i }).click();
@@ -191,6 +206,9 @@ test("first-load loader persists across client-side internal navigation", async 
   await expect(page.getByRole("status", { name: "Loading portfolio" })).toBeVisible();
   await expect(page.locator(".portfolio-loader__counter")).toBeVisible();
   await expect(page.locator(".portfolio-loader__bars")).toBeVisible();
+  await expect(page.locator(".portfolio-loader__counter")).toHaveCSS("color", "rgb(199, 255, 0)");
+  await expect(page.locator(".portfolio-loader__bar").first()).toHaveCSS("background-color", "rgb(199, 255, 0)");
+  await expect(page.locator(".portfolio-loader__label")).toHaveCSS("color", "rgba(199, 255, 0, 0.58)");
   await expect(page.getByRole("status", { name: "Loading portfolio" })).toBeHidden({ timeout: 3000 });
 
   await page.getByRole("link", { name: /View All Projects/i }).click();

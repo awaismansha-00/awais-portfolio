@@ -50,6 +50,9 @@ const profile = {
   image: "/assets/profile.png",
 };
 
+const CV_URL = "/assets/cv/Awais-Mansha-DevOps-CV.pdf";
+const CV_DOWNLOAD_NAME = "Awais-Mansha-DevOps-CV.pdf";
+
 const navItems = [
   { label: "Home", href: "/#top" },
   { label: "Work", href: "/#work" },
@@ -749,16 +752,13 @@ function Hero({ isReady, reducedMotion }) {
               >
                 View Projects <ArrowRight size={18} aria-hidden="true" />
               </a>
-              <button
-                type="button"
-                className="portfolio-action portfolio-action--disabled inline-flex min-h-12 items-center gap-2 rounded-lg px-5 py-3 text-sm font-black focus:outline-none"
-                aria-disabled="true"
-                aria-label="Download CV — CV coming soon"
-                title="CV coming soon"
-                disabled
+              <a
+                href={CV_URL}
+                download={CV_DOWNLOAD_NAME}
+                className="portfolio-action inline-flex min-h-12 items-center gap-2 rounded-lg px-5 py-3 text-sm font-black focus:outline-none"
               >
                 Download CV <ArrowRight size={18} aria-hidden="true" />
-              </button>
+              </a>
             </div>
             <p className="hero-section__description max-w-2xl">
               Based in the UK, I’m Awais Mansha — a DevOps and Cloud Engineer focused on reusable infrastructure, secure cloud platforms, and automated delivery systems built to evolve.

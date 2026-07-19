@@ -572,7 +572,7 @@ canvas {
   z-index: 70;
   overflow: hidden;
   background: #000;
-  color: #fff;
+  color: var(--hero-lime);
   pointer-events: auto;
 }
 
@@ -584,7 +584,7 @@ canvas {
   width: min(300px, 72vw);
   height: 50px;
   overflow: hidden;
-  background: rgb(80, 80, 80);
+  background: rgba(199, 255, 0, 0.16);
   transform: translate(-50%, -50%);
   transform-origin: center;
   animation: loader-bars-exit 0.72s 1.18s cubic-bezier(0.65, 0, 0.35, 1) forwards;
@@ -593,7 +593,7 @@ canvas {
 .portfolio-loader__bar {
   display: block;
   height: 100%;
-  background: #fff;
+  background: var(--hero-lime);
   transform: scaleX(0);
   transform-origin: left center;
 }
@@ -663,7 +663,7 @@ canvas {
   position: fixed;
   top: clamp(1.5rem, 4vw, 3rem);
   left: clamp(1.5rem, 4vw, 3rem);
-  color: rgba(255, 255, 255, 0.58);
+  color: rgba(199, 255, 0, 0.58);
   font-family: "Space Mono", "Courier New", monospace;
   font-size: 0.72rem;
   font-weight: 700;
@@ -694,7 +694,7 @@ canvas {
 
 @keyframes loader-bars-exit {
   0% {
-    background: rgb(80, 80, 80);
+    background: rgba(199, 255, 0, 0.16);
     transform: translate(-50%, -50%) rotate(0deg) scale(1);
   }
 
