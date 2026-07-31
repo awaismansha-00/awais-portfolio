@@ -4,5 +4,11 @@
     "summary": "OIDC, IRSA, and EKS Pod Identity all help workloads access AWS, but the distinction is where the workload runs. External pipelines and platforms use identity federation differently from pods running inside EKS.",
     "href": "https://medium.com/@awaismansha97/openid-connect-vs-eks-pod-identity-oidc-irsa-and-aws-workload-identity-explained-f2f9a3690b7a?sharedUserId=awaismansha97",
     "image": "/assets/blog/oidc-irsa-pod-identity.webp"
+  },
+  {
+    "title": "GitOps with Argo CD",
+    "summary": "An in-depth guide to moving from push-based Kubernetes deployments to GitOps with Argo CD, covering continuous reconciliation, CI/CD responsibilities, drift detection, sync policies, production patterns, multi-cluster delivery, and common operational mistakes.",
+    "href": "https://medium.com/@awaismansha97/gitops-with-argo-cd-a3191818e62e?sharedUserId=awaismansha97",
+    "image": "/assets/blog/gitops-with-argocd.webp"
   }
 ]

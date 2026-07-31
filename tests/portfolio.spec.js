@@ -66,10 +66,9 @@ test("portfolio renders hero, sections, and active contact path", async ({ page 
   await expect(page.getByRole("link", { name: /View All Projects/i })).toHaveAttribute("href", "/projects");
   await expect(page.locator("#work article h3").first()).toHaveText(projects[0].title);
   await expect(page.locator("#work article").first().getByRole("link", { name: /GitHub/i })).toHaveAttribute("href", projects[0].github);
-  await expect(page.locator("#work article").first().getByRole("img", { name: /AWS 3-Tier Architecture.*architecture/i })).toHaveAttribute(
-    "src",
-    projects[0].image,
-  );
+  const firstProjectImage = page.locator("#work article").first().locator("img").first();
+  await expect(firstProjectImage).toHaveAttribute("src", projects[0].image);
+  await expect(firstProjectImage).toHaveAttribute("alt", `${projects[0].title} architecture`);
   const carousel = page.getByTestId("project-carousel");
   const firstProjectCard = page.locator("#work article").first();
   const firstProjectControls = firstProjectCard.getByTestId("project-carousel-controls");
@@ -114,7 +113,14 @@ test("portfolio renders hero, sections, and active contact path", async ({ page 
   }
   await firstProjectCard.hover();
   await expect(firstProjectCard.getByLabel(`${projects[0].title} tools`).getByText(projects[0].tags[0], { exact: true })).toBeVisible();
-  await expect(page.locator("#work article").nth(1).getByText("Repository project")).toBeVisible();
+  // Cards fall back to the "Repository project" placeholder only when the project has no image.
+  const secondProjectCard = page.locator("#work article").nth(1);
+  if (projects[1].image) {
+    await expect(secondProjectCard.locator("img").first()).toHaveAttribute("src", projects[1].image);
+    await expect(secondProjectCard.getByText("Repository project")).toHaveCount(0);
+  } else {
+    await expect(secondProjectCard.getByText("Repository project")).toBeVisible();
+  }
   await expect(page.locator("[data-skill-icon]")).toHaveCount(17);
   const certifiedItems = certificationGroups.find((group) => group.status === "Certified").items;
   const preparingItems = certificationGroups.find((group) => group.status === "Preparing").items;
@@ -131,11 +137,14 @@ test("portfolio renders hero, sections, and active contact path", async ({ page 
   const blogCarousel = page.getByTestId("blog-carousel");
   const firstBlogCard = page.locator("#blog article").first();
   await expect(page.getByRole("heading", { name: /Writing in public about DevOps practice/i })).toHaveCount(0);
-  await expect(firstBlogCard.getByRole("button", { name: "Scroll blogs left" })).toHaveCount(0);
-  await expect(firstBlogCard.getByRole("button", { name: "Scroll blogs right" })).toHaveCount(0);
-  await expect(page.getByTestId("blog-carousel-controls")).toHaveCount(0);
   const blogCanScroll = await blogCarousel.evaluate((element) => element.scrollWidth > element.clientWidth + 2);
+  // Carousel arrows only render while the track can actually scroll, so they depend on how many posts exist.
+  await expect(firstBlogCard.getByRole("button", { name: "Scroll blogs left" })).toHaveCount(0);
+  await expect(firstBlogCard.getByRole("button", { name: "Scroll blogs right" })).toHaveCount(blogCanScroll ? 1 : 0);
+  await expect(page.getByTestId("blog-carousel-controls")).toHaveCount(blogCanScroll ? Math.min(blogPosts.length, 3) : 0);
   if (blogCanScroll) {
+    // Mouse coordinates are viewport-relative, so the track has to be on screen before dragging it.
+    await blogCarousel.scrollIntoViewIfNeeded();
     const blogBox = await blogCarousel.boundingBox();
     expect(blogBox).not.toBeNull();
     await page.mouse.move(blogBox.x + blogBox.width * 0.58, blogBox.y + blogBox.height * 0.5);
@@ -149,15 +158,10 @@ test("portfolio renders hero, sections, and active contact path", async ({ page 
   await expect(page.locator("#blog article")).toHaveCount(Math.min(blogPosts.length, 3));
   await expect(page.getByRole("link", { name: /View All Blogs/i })).toHaveAttribute("href", "/blogs");
   await expect(page.locator("#blog article h3").first()).toHaveText(blogPosts[0].title);
-  await expect(page.getByRole("heading", { name: /OpenID Connect vs EKS Pod Identity/i })).toBeVisible();
-  await expect(page.getByRole("img", { name: /OpenID Connect vs EKS Pod Identity.*architecture guide/i })).toHaveAttribute(
-    "src",
-    blogPosts[0].image,
-  );
-  await expect(page.getByRole("link", { name: /Read on Medium/i })).toHaveAttribute(
-    "href",
-    blogPosts[0].href,
-  );
+  const firstBlogImage = firstBlogCard.locator("img").first();
+  await expect(firstBlogImage).toHaveAttribute("src", blogPosts[0].image);
+  await expect(firstBlogImage).toHaveAttribute("alt", `${blogPosts[0].title} architecture guide`);
+  await expect(firstBlogCard.getByRole("link", { name: /Read on Medium/i })).toHaveAttribute("href", blogPosts[0].href);
   await expect(page.getByRole("heading", { name: "Blog" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Process" })).toBeVisible();
   await expect(page.getByText("Professional Signal")).toHaveCount(0);

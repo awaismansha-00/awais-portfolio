@@ -1,18 +1,20 @@
-# Portfolio Website 
+# Portfolio Website
 
-A modern DevOps engineer portfolio built with Vite, React, Tailwind CSS, Three.js, and a generated cloud infrastructure hero asset.
+A DevOps engineer portfolio built with Vite, React, Tailwind CSS, and Motion, with a hand-rolled client-side router for `/`, `/projects`, and `/blogs`.
 
 ## Files
 
-- `src/App.jsx` - React portfolio UI, Three.js scene, sections, content, and interactions
+- `src/App.jsx` - React portfolio UI, routing, sections, and interactions
 - `src/index.css` - Tailwind entry point and global CSS
 - `vite.config.js` - Vite config with React and Tailwind plugins
-- `public/assets/devops-hero.png` - generated hero image for production builds
-- `public/assets/profile.webp` - optimized profile picture used in the header
+- `playwright.config.js` - Playwright config; builds and serves the app automatically before tests
+- `public/assets/devops-hero.png` - Open Graph / social preview image
+- `public/assets/awais-hero-portrait.webp` - hero portrait
+- `public/assets/profile.webp` - profile picture used in the header
 - `public/assets/favicon.svg` - browser icon
-- `public/_headers` - security headers for hosts that support Netlify/Cloudflare-style headers
+- `vercel.json` - SPA rewrites, cache rules, and security headers for Vercel
+- `public/_headers` - the same security headers for Netlify/Cloudflare-style hosts
 - `public/_redirects` - SPA fallback so `/projects` and `/blogs` work as direct URLs on supported static hosts
-- `.tools/node/` - project-local Node.js runtime, useful when Node is not installed system-wide
 
 ## Customize
 
@@ -23,8 +25,9 @@ Update these first:
 - Add, edit, remove, or reorder blog posts in `src/content/blogs.json`.
 - Add, edit, remove, or reorder certifications in `src/content/certifications.json`.
 - Update the skills list in `src/App.jsx` if you want to add or reorder tools. Skill icons use `react-icons`.
-- Add your resume PDF to `public/assets/` and link it from the hero or contact section if you want a download button.
+- The CV served by the hero "Download CV" button lives at `public/assets/cv/` and is set by `CV_URL` in `src/App.jsx`.
 - The profile picture is currently loaded from `public/assets/profile.webp`.
+- Site URL is hardcoded in `index.html` (canonical + Open Graph), `public/sitemap.xml`, and `public/robots.txt`. Update all three if the domain changes.
 
 ## Edit Projects and Blogs
 
@@ -35,7 +38,7 @@ Projects render in the same order as `src/content/projects.json`. Use this shape
   "title": "AWS 3-Tier Architecture with Terraform",
   "summary": "Short website description here.",
   "github": "https://github.com/awaismansha-00/aws_terraform_3tier",
-  "image": "/assets/projects/3-Tier AWS Architecture.png",
+  "image": "/assets/projects/aws-terraform3tier.webp",
   "tags": ["AWS", "Terraform", "VPC", "ALB", "RDS"]
 }
 ```
@@ -49,7 +52,7 @@ Blogs render in the same order as `src/content/blogs.json`. Use this shape:
   "title": "Blog title",
   "summary": "Short website version here.",
   "href": "https://medium.com/...",
-  "image": "/assets/blog/example.png"
+  "image": "/assets/blog/example.webp"
 }
 ```
 
@@ -74,17 +77,7 @@ The `href` and `image` fields are optional. Add certification badge images to `p
 
 ## Develop
 
-If Node is not available globally, use the local runtime:
-
-```powershell
-$env:Path = "$(Get-Location)\.tools\node;$env:Path"
-.\.tools\node\npm.cmd install
-.\.tools\node\npm.cmd run dev
-```
-
-If Node is available globally:
-
-```powershell
+```bash
 npm install
 npm run dev
 ```
@@ -93,15 +86,24 @@ npm run dev
 
 Build and upload the `dist/` folder to GitHub Pages, Netlify, Vercel, Cloudflare Pages, S3, or any static web host.
 
-```powershell
-$env:Path = "$(Get-Location)\.tools\node;$env:Path"
-.\.tools\node\npm.cmd run build
+```bash
+npm run build
 ```
+
+Because routing is client-side, the host must serve `index.html` for `/projects` and `/blogs`. That is already configured in `vercel.json` (rewrites) and `public/_redirects` (Netlify/Cloudflare).
 
 ## Verify
 
-```powershell
-$env:Path = "$(Get-Location)\.tools\node;$env:Path"
-.\.tools\node\npm.cmd run build
-.\.tools\node\npm.cmd run test:visual
+Playwright builds the site and starts a preview server itself, so no server needs to be running first.
+
+```bash
+npx playwright install chromium   # first run only
+npm run test:visual
+```
+
+Run a single project or file with the usual Playwright flags:
+
+```bash
+npm run test:visual -- --project=desktop-chromium
+npm run test:visual -- tests/nav-rescroll.spec.js
 ```

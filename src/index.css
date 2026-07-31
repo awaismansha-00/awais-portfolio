@@ -13,6 +13,8 @@
   --action-border: rgba(199, 255, 0, 0.46);
   --action-surface: rgba(199, 255, 0, 0.08);
   --action-surface-hover: rgba(199, 255, 0, 0.15);
+  --icon-action-surface: rgba(7, 10, 9, 0.86);
+  --icon-action-surface-hover: rgba(7, 10, 9, 0.96);
   --route-transition-stroke-1: #111614;
   --route-transition-stroke-2: #c7ff00;
   font-family:
@@ -285,6 +287,15 @@ canvas {
     box-shadow 220ms ease;
 }
 
+/* Carousel arrows sit on top of project artwork, so they need an opaque dark
+   plate of their own -- the translucent lime surface disappears on light images. */
+.portfolio-icon-action {
+  border-color: rgba(199, 255, 0, 0.5);
+  background: var(--icon-action-surface);
+  color: #f4f6ef;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.5);
+}
+
 .portfolio-action:hover,
 .portfolio-action:focus-visible {
   border-color: rgba(199, 255, 0, 0.86);
@@ -296,10 +307,10 @@ canvas {
 
 .portfolio-icon-action:hover,
 .portfolio-icon-action:focus-visible {
-  border-color: rgba(199, 255, 0, 0.86);
-  background: var(--action-surface-hover);
-  color: #f4f6ef;
-  box-shadow: 0 14px 34px rgba(199, 255, 0, 0.08);
+  border-color: rgba(199, 255, 0, 0.9);
+  background: var(--icon-action-surface-hover);
+  color: var(--hero-lime);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.55);
 }
 
 .portfolio-action:focus-visible,
@@ -473,7 +484,6 @@ canvas {
 }
 
 .portfolio-card {
-  transform-style: preserve-3d;
   will-change: transform, opacity;
 }
 

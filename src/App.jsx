@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { AnimatePresence, motion, useInView, useMotionValue, useReducedMotion } from "motion/react";
+import { AnimatePresence, motion, useInView, useReducedMotion } from "motion/react";
 import { FaAws } from "react-icons/fa";
 import {
   SiArgo,
@@ -107,6 +107,7 @@ const skillGroups = [
 ];
 
 const HOMEPAGE_PREVIEW_COUNT = 3;
+const SECTION_IDS = ["top", "work", "skills", "blog", "process", "contact"];
 const HERO_WORDS = ["PURPOSE", "IMPACT", "INTENT"];
 const HERO_WORD_INTERVAL = 3400;
 const FEATURED_IMAGE_URLS = [
@@ -132,7 +133,6 @@ const MOTION = {
   routeEase: [0.65, 0, 0.35, 1],
   stagger: 0.06,
   viewport: { once: true, amount: 0.18 },
-  depth: { perspective: 900, tilt: 4, card: 8 },
   blur: { background: 18 },
 };
 
@@ -365,29 +365,6 @@ function Reveal({ children, className = "", delay = 0, amount = MOTION.viewport.
   );
 }
 
-function useTilt(enabled) {
-  const rotateX = useMotionValue(0);
-  const rotateY = useMotionValue(0);
-  const reset = () => {
-    rotateX.set(0);
-    rotateY.set(0);
-  };
-
-  return {
-    style: enabled ? { rotateX, rotateY, transformPerspective: MOTION.depth.perspective } : undefined,
-    onPointerMove: enabled
-      ? (event) => {
-          const rect = event.currentTarget.getBoundingClientRect();
-          const x = (event.clientX - rect.left) / rect.width - 0.5;
-          const y = (event.clientY - rect.top) / rect.height - 0.5;
-          rotateX.set(-y * MOTION.depth.tilt);
-          rotateY.set(x * MOTION.depth.tilt);
-        }
-      : undefined,
-    onPointerLeave: enabled ? reset : undefined,
-  };
-}
-
 function GlobalBackground({ reducedMotion, isMobile }) {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: false, amount: 0.01 });
@@ -492,7 +469,7 @@ function RotatingHeroWord({ reducedMotion }) {
   const word = HERO_WORDS[wordIndex];
 
   return (
-    <span className="hero-rotating-word" aria-live="polite">
+    <span className="hero-rotating-word">
       <span className="hero-rotating-word__stage" style={{ perspective: "1000px" }}>
         {reducedMotion ? (
           <span className="hero-section__accent hero-rotating-word__value hero-flip-word" aria-hidden="true">
@@ -504,7 +481,8 @@ function RotatingHeroWord({ reducedMotion }) {
           </AnimatePresence>
         )}
       </span>
-      <span className="sr-only">{word}</span>
+      {/* Static so the heading keeps one stable accessible name instead of re-announcing every rotation. */}
+      <span className="sr-only">{HERO_WORDS[0]}</span>
     </span>
   );
 }
@@ -568,13 +546,14 @@ function useActiveSection(ids) {
 
 function useDragScroll() {
   const ref = useRef(null);
-  const drag = useRef({ active: false, moved: false, startX: 0, scrollLeft: 0, distance: 0, suppressClick: false });
+  const drag = useRef({ active: false, moved: false, startX: 0, scrollLeft: 0, distance: 0, suppressClick: false, captured: false });
 
   const endDrag = (snap = true) => {
     if (!drag.current.active) return;
     const { distance, moved, scrollLeft } = drag.current;
     const track = ref.current;
     drag.current.active = false;
+    drag.current.captured = false;
     document.body.style.userSelect = "";
 
     if (snap && track && moved && Math.abs(distance) > 24) {
@@ -605,7 +584,7 @@ function useDragScroll() {
         drag.current.startX = event.pageX;
         drag.current.scrollLeft = ref.current.scrollLeft;
         drag.current.distance = 0;
-        ref.current.setPointerCapture(event.pointerId);
+        drag.current.captured = false;
         document.body.style.userSelect = "none";
       },
       onPointerMove: (event) => {
@@ -615,6 +594,12 @@ function useDragScroll() {
         drag.current.distance = distance;
         if (Math.abs(distance) > 5) {
           drag.current.moved = true;
+          // Capture only once this is a real drag. Capturing on pointerdown retargets the
+          // click to the track, which stops the card's GitHub/Medium links from opening.
+          if (!drag.current.captured) {
+            drag.current.captured = true;
+            ref.current.setPointerCapture(event.pointerId);
+          }
         }
         ref.current.scrollLeft = drag.current.scrollLeft - distance * 1.6;
         event.preventDefault();
@@ -692,7 +677,8 @@ function getCarouselScrollAmount(track) {
 function Header() {
   const [isOpen, setIsOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
-  const activeId = useActiveSection(["top", "work", "skills", "blog", "process", "contact"]);
+  const activeId = useActiveSection(SECTION_IDS);
+  const isMobile = useMediaQuery("(max-width: 767px)");
 
   useEffect(() => {
     const onScroll = () => setIsScrolled(window.scrollY > 12);
@@ -742,6 +728,7 @@ function Header() {
             isOpen ? "translate-y-0 opacity-100" : "pointer-events-none -translate-y-3 opacity-0 md:pointer-events-auto md:translate-y-0 md:opacity-100"
           }`}
           aria-label="Primary navigation"
+          inert={isMobile && !isOpen ? true : undefined}
         >
           {navItems.map((item) => {
             const isActive = activeId === item.href.split("#")[1];
@@ -830,8 +817,6 @@ function ProjectCard({ project, index, variant = "carousel", onScrollLeft, onScr
   const isCarousel = variant === "carousel";
   const showCarouselControls = isCarousel && (canScrollLeft || canScrollRight);
   const reducedMotion = useReducedMotion();
-  const finePointer = useMediaQuery("(hover: hover) and (pointer: fine)");
-  const tilt = useTilt(isCarousel && finePointer && !reducedMotion);
   const shouldReveal = !reducedMotion && !isCarousel && !project.image;
 
   return (
@@ -841,9 +826,6 @@ function ProjectCard({ project, index, variant = "carousel", onScrollLeft, onScr
       className={`group portfolio-card overflow-hidden rounded-lg border border-white/10 bg-white/[0.055] shadow-2xl shadow-black/25 transition hover:-translate-y-1 hover:border-lime-300/40 focus-within:border-lime-300/40 ${
         isCarousel ? "w-full shrink-0 snap-start" : "h-full"
       }`}
-      style={tilt.style}
-      onPointerMove={tilt.onPointerMove}
-      onPointerLeave={tilt.onPointerLeave}
       initial={shouldReveal ? { opacity: 0, y: 18 } : false}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, amount: 0.15 }}
@@ -1405,7 +1387,12 @@ function App() {
     const currentRenderedPage = pageRef.current;
     const currentRenderedPath = currentRenderedPage === "home" ? "/" : `/${currentRenderedPage}`;
 
-    if (!isPop && nextUrl === currentBrowserUrl) return true;
+    if (!isPop && nextUrl === currentBrowserUrl) {
+      if (nextPage === currentRenderedPage && url.pathname === currentRenderedPath) {
+        scrollSameRoute(url, nextPage);
+      }
+      return true;
+    }
 
     if (nextPage === currentRenderedPage && url.pathname === currentRenderedPath) {
       scrollPositions.current[window.location.pathname] = window.scrollY;
