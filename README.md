@@ -4,7 +4,12 @@ A DevOps engineer portfolio built with Vite, React, Tailwind CSS, and Motion, wi
 
 ## Files
 
-- `src/App.jsx` - React portfolio UI, routing, sections, and interactions
+- `src/App.jsx` - page composition and route transition state
+- `src/components/` - portfolio sections, cards, header, and animation components
+- `src/pages/ListingPage.jsx` - complete project and blog pages
+- `src/hooks/` - navigation, carousel, loader, and visibility hooks
+- `src/lib/` - featured-content selection, image loading, animation settings, and safe fragment navigation
+- `src/content/` - editable profile, skills, process, projects, blogs, and certifications
 - `src/index.css` - Tailwind entry point and global CSS
 - `vite.config.js` - Vite config with React and Tailwind plugins
 - `playwright.config.js` - Playwright config; builds and serves the app automatically before tests
@@ -20,22 +25,30 @@ A DevOps engineer portfolio built with Vite, React, Tailwind CSS, and Motion, wi
 
 Update these first:
 
-- Your email, GitHub, and LinkedIn are stored in the `profile` object near the top of `src/App.jsx`.
+- Your email, GitHub, and LinkedIn are stored in `src/content/profile.js`.
 - Add, edit, remove, or reorder projects in `src/content/projects.json`.
 - Add, edit, remove, or reorder blog posts in `src/content/blogs.json`.
 - Add, edit, remove, or reorder certifications in `src/content/certifications.json`.
-- Update the skills list in `src/App.jsx` if you want to add or reorder tools. Skill icons use `react-icons`.
-- The CV served by the hero "Download CV" button lives at `public/assets/cv/` and is set by `CV_URL` in `src/App.jsx`.
+- Update the skills list in `src/content/skills.js` to add or reorder tools. Skill icons use `react-icons`.
+- Update `src/content/process.js` to edit the process steps.
+- The CV served by the hero "Download CV" button lives at `public/assets/cv/` and is set by `CV_URL` in `src/content/profile.js`.
 - The profile picture is currently loaded from `public/assets/profile.webp`.
 - Site URL is hardcoded in `index.html` (canonical + Open Graph), `public/sitemap.xml`, and `public/robots.txt`. Update all three if the domain changes.
 
 ## Edit Projects and Blogs
+
+New entries appear on `/projects` or `/blogs` only by default. The homepage shows up to three entries per section with `"featured": true`. Existing homepage entries are explicitly marked, so adding unfeatured content anywhere in either JSON array will not change the homepage.
+
+To add content only to its listing page, use `"featured": false` (or omit the field). To feature an entry later, change it to `true`; featured entries follow their order in the JSON array.
+
+Add each object inside the existing `[...]` array, separated by commas. Do not leave a trailing comma after the last object. Save and visit `/projects` or `/blogs` on the dev server to see your changes. When using production preview, rebuild first.
 
 Projects render in the same order as `src/content/projects.json`. Use this shape:
 
 ```json
 {
   "title": "AWS 3-Tier Architecture with Terraform",
+  "featured": false,
   "summary": "Short website description here.",
   "github": "https://github.com/awaismansha-00/aws_terraform_3tier",
   "image": "/assets/projects/aws-terraform3tier.webp",
@@ -50,6 +63,7 @@ Blogs render in the same order as `src/content/blogs.json`. Use this shape:
 ```json
 {
   "title": "Blog title",
+  "featured": false,
   "summary": "Short website version here.",
   "href": "https://medium.com/...",
   "image": "/assets/blog/example.webp"
@@ -81,6 +95,15 @@ The `href` and `image` fields are optional. Add certification badge images to `p
 npm install
 npm run dev
 ```
+
+On Windows, if `npm` is not recognized and the bundled `.tools/node/` runtime is present, run these from the project folder:
+
+```powershell
+$env:Path = "$PWD\.tools\node;$env:Path"
+.\.tools\node\npm.cmd run dev
+```
+
+Open the URL printed in the terminal. The same PATH setting lets the build and test commands use the bundled runtime in that terminal session.
 
 ## Deploy
 

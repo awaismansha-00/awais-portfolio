@@ -1,8 +1,11 @@
+import { getFeaturedItems } from "../src/lib/content.js";
 import { expect, test } from "@playwright/test";
 import { readFileSync } from "node:fs";
 
 const projects = JSON.parse(readFileSync(new URL("../src/content/projects.json", import.meta.url), "utf8"));
 const blogPosts = JSON.parse(readFileSync(new URL("../src/content/blogs.json", import.meta.url), "utf8"));
+const featuredProjects = getFeaturedItems(projects);
+const featuredBlogs = getFeaturedItems(blogPosts);
 
 async function openedUrl(page, locator) {
   const [popup] = await Promise.all([page.waitForEvent("popup", { timeout: 6000 }), locator.click()]);
@@ -18,11 +21,11 @@ test("home carousel cards open their GitHub and Medium links", async ({ page }) 
 
   const projectLink = page.locator("#work article").first().getByRole("link", { name: /GitHub/i });
   await projectLink.scrollIntoViewIfNeeded();
-  expect(await openedUrl(page, projectLink)).toBe(projects[0].github);
+  expect(await openedUrl(page, projectLink)).toBe(featuredProjects[0].github);
 
   const blogLink = page.locator("#blog article").first().getByRole("link", { name: /Read on Medium/i });
   await blogLink.scrollIntoViewIfNeeded();
-  expect(await openedUrl(page, blogLink)).toBe(blogPosts[0].href);
+  expect(await openedUrl(page, blogLink)).toBe(featuredBlogs[0].href);
 });
 
 test("listing page cards open their GitHub and Medium links", async ({ page }) => {

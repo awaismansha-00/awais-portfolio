@@ -1,8 +1,11 @@
+import { getFeaturedItems } from "../src/lib/content.js";
 import { expect, test } from "@playwright/test";
 import { readFileSync } from "node:fs";
 
 const projects = JSON.parse(readFileSync(new URL("../src/content/projects.json", import.meta.url), "utf8"));
 const blogPosts = JSON.parse(readFileSync(new URL("../src/content/blogs.json", import.meta.url), "utf8"));
+const featuredProjects = getFeaturedItems(projects);
+const featuredBlogs = getFeaturedItems(blogPosts);
 const certificationGroups = JSON.parse(readFileSync(new URL("../src/content/certifications.json", import.meta.url), "utf8"));
 const cvUrl = "/assets/cv/Awais-Mansha-DevOps-CV.pdf";
 const cvDownloadName = "Awais-Mansha-DevOps-CV.pdf";
@@ -62,13 +65,13 @@ test("portfolio renders hero, sections, and active contact path", async ({ page 
   await expect(page.getByAltText("Awais Mansha, DevOps Engineer")).toHaveCount(0);
   await expect(page.getByRole("heading", { name: /DevOps projects built around cloud/i })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Selected Work" })).toBeVisible();
-  await expect(page.locator("#work article")).toHaveCount(Math.min(projects.length, 3));
+  await expect(page.locator("#work article")).toHaveCount(featuredProjects.length);
   await expect(page.getByRole("link", { name: /View All Projects/i })).toHaveAttribute("href", "/projects");
-  await expect(page.locator("#work article h3").first()).toHaveText(projects[0].title);
-  await expect(page.locator("#work article").first().getByRole("link", { name: /GitHub/i })).toHaveAttribute("href", projects[0].github);
+  await expect(page.locator("#work article h3").first()).toHaveText(featuredProjects[0].title);
+  await expect(page.locator("#work article").first().getByRole("link", { name: /GitHub/i })).toHaveAttribute("href", featuredProjects[0].github);
   const firstProjectImage = page.locator("#work article").first().locator("img").first();
-  await expect(firstProjectImage).toHaveAttribute("src", projects[0].image);
-  await expect(firstProjectImage).toHaveAttribute("alt", `${projects[0].title} architecture`);
+  await expect(firstProjectImage).toHaveAttribute("src", featuredProjects[0].image);
+  await expect(firstProjectImage).toHaveAttribute("alt", `${featuredProjects[0].title} architecture`);
   const carousel = page.getByTestId("project-carousel");
   const firstProjectCard = page.locator("#work article").first();
   const firstProjectControls = firstProjectCard.getByTestId("project-carousel-controls");
@@ -112,11 +115,11 @@ test("portfolio renders hero, sections, and active contact path", async ({ page 
       .toBeGreaterThan(expectedCardScroll);
   }
   await firstProjectCard.hover();
-  await expect(firstProjectCard.getByLabel(`${projects[0].title} tools`).getByText(projects[0].tags[0], { exact: true })).toBeVisible();
+  await expect(firstProjectCard.getByLabel(`${featuredProjects[0].title} tools`).getByText(featuredProjects[0].tags[0], { exact: true })).toBeVisible();
   // Cards fall back to the "Repository project" placeholder only when the project has no image.
   const secondProjectCard = page.locator("#work article").nth(1);
-  if (projects[1].image) {
-    await expect(secondProjectCard.locator("img").first()).toHaveAttribute("src", projects[1].image);
+  if (featuredProjects[1].image) {
+    await expect(secondProjectCard.locator("img").first()).toHaveAttribute("src", featuredProjects[1].image);
     await expect(secondProjectCard.getByText("Repository project")).toHaveCount(0);
   } else {
     await expect(secondProjectCard.getByText("Repository project")).toBeVisible();
@@ -141,7 +144,7 @@ test("portfolio renders hero, sections, and active contact path", async ({ page 
   // Carousel arrows only render while the track can actually scroll, so they depend on how many posts exist.
   await expect(firstBlogCard.getByRole("button", { name: "Scroll blogs left" })).toHaveCount(0);
   await expect(firstBlogCard.getByRole("button", { name: "Scroll blogs right" })).toHaveCount(blogCanScroll ? 1 : 0);
-  await expect(page.getByTestId("blog-carousel-controls")).toHaveCount(blogCanScroll ? Math.min(blogPosts.length, 3) : 0);
+  await expect(page.getByTestId("blog-carousel-controls")).toHaveCount(blogCanScroll ? featuredBlogs.length : 0);
   if (blogCanScroll) {
     // Mouse coordinates are viewport-relative, so the track has to be on screen before dragging it.
     await blogCarousel.scrollIntoViewIfNeeded();
@@ -155,13 +158,13 @@ test("portfolio renders hero, sections, and active contact path", async ({ page 
       .poll(async () => blogCarousel.evaluate((element) => element.scrollLeft), { timeout: 3000 })
       .toBeGreaterThan(20);
   }
-  await expect(page.locator("#blog article")).toHaveCount(Math.min(blogPosts.length, 3));
+  await expect(page.locator("#blog article")).toHaveCount(featuredBlogs.length);
   await expect(page.getByRole("link", { name: /View All Blogs/i })).toHaveAttribute("href", "/blogs");
-  await expect(page.locator("#blog article h3").first()).toHaveText(blogPosts[0].title);
+  await expect(page.locator("#blog article h3").first()).toHaveText(featuredBlogs[0].title);
   const firstBlogImage = firstBlogCard.locator("img").first();
-  await expect(firstBlogImage).toHaveAttribute("src", blogPosts[0].image);
-  await expect(firstBlogImage).toHaveAttribute("alt", `${blogPosts[0].title} architecture guide`);
-  await expect(firstBlogCard.getByRole("link", { name: /Read on Medium/i })).toHaveAttribute("href", blogPosts[0].href);
+  await expect(firstBlogImage).toHaveAttribute("src", featuredBlogs[0].image);
+  await expect(firstBlogImage).toHaveAttribute("alt", `${featuredBlogs[0].title} architecture guide`);
+  await expect(firstBlogCard.getByRole("link", { name: /Read on Medium/i })).toHaveAttribute("href", featuredBlogs[0].href);
   await expect(page.getByRole("heading", { name: "Blog" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Process" })).toBeVisible();
   await expect(page.getByText("Professional Signal")).toHaveCount(0);

@@ -1,6 +1,7 @@
 [
   {
     "title": "Production Grade DevSecOps Project",
+    "featured": true,
     "summary": "Cloud-native DevSecOps platform for AWS EKS with Terraform infrastructure, QA and production Kubernetes environments, GitHub Actions security gates, image publishing, Argo CD sync, and External Secrets.",
     "github": "https://github.com/awaismansha-00/production-grade-devsecops",
     "image": "/assets/projects/production-grade-devsecops.webp",
@@ -23,6 +24,7 @@
   },
   {
     "title": "OpenTelemetry Demo DevOpsification",
+    "featured": true,
     "summary": "DevOps-focused deployment of the OpenTelemetry demo on AWS EKS using Terraform, Kubernetes manifests, GitHub Actions validation, Docker image updates, and a GitOps-ready workflow.",
     "github": "https://github.com/awaismansha-00/opentelemetry-demo-devops",
     "image": "/assets/projects/opentelemetry.webp",
@@ -38,6 +40,7 @@
   },
   {
     "title": "AWS EKS Terraform Feature Lab",
+    "featured": true,
     "summary": "EKS lab built with Terraform to explore managed node groups, access entries, Pod Identity, autoscaling, ingress controllers, cert-manager, CSI storage, and Secrets Store CSI.",
     "github": "https://github.com/awaismansha-00/aws-eks-terraform-feature-lab",
     "image": "/assets/projects/aws-eks.webp",
@@ -81,6 +84,19 @@
       "Kustomize",
       "ApplicationSets",
       "Multi-cluster Delivery"
+    ]
+  },
+   {
+    "title": "CI with Github Actions",
+    "summary": "A hands-on guide to building CI with GitHub Actions — from workflows, testing and Docker to security gates, SBOMs, signing, attestations, and designing for failure.",
+    "github": "https://github.com/awaismansha-00/ci-with-github-actions",
+    "image": "/assets/projects/ci-with-github-actions.webp",
+    "tags": [
+      "Github Actions",
+      "GitOps",
+      "CI",
+      "DevSecOps",
+      "Security"
     ]
   },
   {

@@ -1,14 +1,35 @@
 [
   {
     "title": "OpenID Connect vs EKS Pod Identity: OIDC, IRSA, and AWS Workload Identity Explained",
+    "featured": true,
     "summary": "OIDC, IRSA, and EKS Pod Identity all help workloads access AWS, but the distinction is where the workload runs. External pipelines and platforms use identity federation differently from pods running inside EKS.",
     "href": "https://medium.com/@awaismansha97/openid-connect-vs-eks-pod-identity-oidc-irsa-and-aws-workload-identity-explained-f2f9a3690b7a?sharedUserId=awaismansha97",
     "image": "/assets/blog/oidc-irsa-pod-identity.webp"
   },
   {
     "title": "GitOps with Argo CD",
+    "featured": true,
     "summary": "An in-depth guide to moving from push-based Kubernetes deployments to GitOps with Argo CD, covering continuous reconciliation, CI/CD responsibilities, drift detection, sync policies, production patterns, multi-cluster delivery, and common operational mistakes.",
     "href": "https://medium.com/@awaismansha97/gitops-with-argo-cd-a3191818e62e?sharedUserId=awaismansha97",
     "image": "/assets/blog/gitops-with-argocd.webp"
+  },
+    {
+    "title": "Build a Production-Ready CI Pipeline with GitHub Actions: A DevSecOps Guide",
+    "featured": false,
+    "summary": "A hands-on guide to building CI with GitHub Actions — from workflows, testing and Docker to security gates, SBOMs, signing, attestations, and designing for failure.",
+    "href": "https://medium.com/@awaismansha97/build-a-production-ready-ci-pipeline-with-github-actions-a-devsecops-guide-0f531e91865d?sharedUserId=awaismansha97",
+    "image": "/assets/blog/ci.webp"
+  },  {
+    "title": "How to Dockerize an Application: One Pattern for 8 Languages",
+    "featured": false,
+    "summary": "Learn how to dockerize applications in C++, Go, Java, JavaScript, PHP, Python, Ruby, and Rust with multi-stage builds and non-root containers.",
+    "href": "https://medium.com/@awaismansha97/how-to-dockerize-an-application-one-pattern-for-8-languages-47aaf2efabd6?sharedUserId=awaismansha97",
+    "image": "/assets/blog/dockerize.webp"
+  },  {
+    "title": "Terraform Drift: When Your Cloud Stops Matching Your Code",
+    "featured": false,
+    "summary": "A practical guide to Terraform state, managed drift, unmanaged resources, and how to catch both in CI before they become incidents.",
+    "href": "https://medium.com/@awaismansha97/terraform-drift-when-your-cloud-stops-matching-your-code-057b9dec18a8?sharedUserId=awaismansha97",
+    "image": "/assets/blog/terraform.webp"
   }
 ]
